@@ -1,0 +1,345 @@
+{% extends "base.html" %}
+
+{% block title %}AI Tutor - EduMind AI{% endblock %}
+
+{% block page_title %}{% endblock %}
+
+{% block content %}
+<div class="h-[calc(100vh-140px)] flex flex-col lg:flex-row gap-6">
+    <!-- Sidebar: Chat Sessions -->
+    <div class="lg:w-80 flex-shrink-0 flex flex-col gap-4">
+        <!-- New Chat Button -->
+        <button onclick="openNewChatModal()" class="glass-card rounded-2xl p-4 flex items-center gap-3 hover:bg-white/10 transition-all group text-left w-full">
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform">
+                <i class="bi bi-plus-lg text-white text-xl"></i>
+            </div>
+            <div>
+                <p class="font-semibold text-white">New Chat</p>
+                <p class="text-xs text-slate-400">Start learning session</p>
+            </div>
+        </button>
+
+        <!-- Search Sessions -->
+        <div class="relative group">
+            <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors"></i>
+            <input type="text" id="sessionSearch" placeholder="Search conversations..." 
+                class="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                oninput="filterSessions(this.value)">
+        </div>
+
+        <!-- Sessions List -->
+        <div class="glass-card rounded-2xl flex-1 overflow-hidden flex flex-col">
+            <div class="p-4 border-b border-white/10 flex items-center justify-between">
+                <h3 class="font-semibold text-white flex items-center gap-2">
+                    <i class="bi bi-clock-history text-blue-400"></i>
+                    Recent Chats
+                </h3>
+                <span class="text-xs text-slate-500">{{ sessions|length }} total</span>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-2 space-y-1" id="sessionsList">
+                {% if sessions %}
+                    {% for session in sessions %}
+                    <a href="{{ url_for('ai.chat_session', session_id=session.id) }}" 
+                       class="block p-3 rounded-xl hover:bg-white/5 transition-all group {{ 'bg-white/10 border border-white/10' if loop.first else '' }}"
+                       data-topic="{{ (session.topic or 'General')|lower }}"
+                       data-course="{{ session.course.name|lower if session.course else '' }}">
+                        <div class="flex items-start gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-{{ ['blue', 'purple', 'emerald', 'amber', 'pink'][loop.index0 % 5] }}-500/20 to-{{ ['blue', 'purple', 'emerald', 'amber', 'pink'][loop.index0 % 5] }}-600/10 flex items-center justify-center flex-shrink-0 border border-{{ ['blue', 'purple', 'emerald', 'amber', 'pink'][loop.index0 % 5] }}-500/20">
+                                <i class="bi bi-chat-square-text text-{{ ['blue', 'purple', 'emerald', 'amber', 'pink'][loop.index0 % 5] }}-400 text-sm"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center justify-between mb-1">
+                                    <h4 class="text-sm font-medium text-white truncate group-hover:text-blue-300 transition-colors">{{ session.topic or 'General Chat' }}</h4>
+                                    {% if session.messages|length > 0 %}
+                                    <span class="text-xs text-slate-500 bg-slate-800 px-2 py-0.5 rounded-full">{{ session.messages|length }}</span>
+                                    {% endif %}
+                                </div>
+                                {% if session.course %}
+                                <p class="text-xs text-slate-500 mb-1 flex items-center gap-1">
+                                    <i class="bi bi-book text-xs"></i>
+                                    {{ session.course.code }}
+                                </p>
+                                {% endif %}
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs text-slate-500">{{ session.updated_at|datetimeformat('%b %d, %H:%M') }}</span>
+                                    {% if loop.first %}
+                                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-8">
+                        <div class="w-16 h-16 mx-auto mb-3 rounded-full bg-slate-800/50 flex items-center justify-center">
+                            <i class="bi bi-chat-square text-2xl text-slate-600"></i>
+                        </div>
+                        <p class="text-slate-500 text-sm">No chats yet</p>
+                        <button onclick="openNewChatModal()" class="mt-2 text-blue-400 hover:text-blue-300 text-sm">Start your first chat</button>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Area: Welcome / Quick Start -->
+    <div class="flex-1 glass-card rounded-3xl p-8 flex flex-col items-center justify-center text-center relative overflow-hidden">
+        <!-- Background Effects -->
+        <div class="absolute top-0 left-0 w-full h-full">
+            <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
+            <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style="animation-delay: 1s;"></div>
+        </div>
+
+        <div class="relative z-10 max-w-2xl w-full">
+            <!-- Hero Icon -->
+            <div class="w-24 h-24 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-2xl shadow-blue-500/30 float-element">
+                <i class="bi bi-robot text-5xl text-white"></i>
+            </div>
+
+            <h1 class="text-4xl font-bold text-white mb-4 font-display">AI Learning Assistant</h1>
+            <p class="text-slate-400 text-lg mb-8 max-w-lg mx-auto">
+                Your personal tutor for any subject. Get instant help with homework, exam prep, coding, and career guidance.
+            </p>
+
+            <!-- Quick Start Options -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+                <button onclick="quickStart('Help me understand')" class="p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all text-left group">
+                    <div class="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                        <i class="bi bi-lightbulb text-blue-400 text-xl"></i>
+                    </div>
+                    <h3 class="font-semibold text-white mb-1">Explain a Topic</h3>
+                    <p class="text-sm text-slate-500">Break down complex concepts</p>
+                </button>
+
+                <button onclick="quickStart('Solve this problem step by step')" class="p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all text-left group">
+                    <div class="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                        <i class="bi bi-calculator text-emerald-400 text-xl"></i>
+                    </div>
+                    <h3 class="font-semibold text-white mb-1">Solve Problems</h3>
+                    <p class="text-sm text-slate-500">Step-by-step solutions</p>
+                </button>
+
+                <button onclick="quickStart('Quiz me on this subject')" class="p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all text-left group">
+                    <div class="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                        <i class="bi bi-question-circle text-amber-400 text-xl"></i>
+                    </div>
+                    <h3 class="font-semibold text-white mb-1">Practice Quiz</h3>
+                    <p class="text-sm text-slate-500">Test your knowledge</p>
+                </button>
+
+                <button onclick="quickStart('Career advice for')" class="p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all text-left group">
+                    <div class="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                        <i class="bi bi-briefcase text-purple-400 text-xl"></i>
+                    </div>
+                    <h3 class="font-semibold text-white mb-1">Career Guidance</h3>
+                    <p class="text-sm text-slate-500">Professional advice</p>
+                </button>
+            </div>
+
+            <!-- Recent Activity Summary -->
+            {% if sessions %}
+            <div class="glass-card rounded-2xl p-4 inline-flex items-center gap-4">
+                <div class="flex -space-x-2">
+                    {% for session in sessions[:3] %}
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-{{ ['blue', 'purple', 'emerald'][loop.index0 % 3] }}-400 to-{{ ['blue', 'purple', 'emerald'][loop.index0 % 3] }}-600 flex items-center justify-center text-xs font-bold text-white border-2 border-slate-900">
+                        {{ session.topic[0] if session.topic else 'A' }}
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="text-left">
+                    <p class="text-sm text-white font-medium">{{ sessions|length }} conversations</p>
+                    <p class="text-xs text-slate-500">Continue where you left off</p>
+                </div>
+                <a href="{{ url_for('ai.chat_session', session_id=sessions[0].id) }}" class="px-4 py-2 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-all text-sm font-medium">
+                    Resume
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- New Chat Modal -->
+<div id="newChatModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div class="glass-card rounded-2xl w-full max-w-md transform scale-95 opacity-0 transition-all duration-300" id="newChatModalContent">
+        <div class="p-6 border-b border-white/10 flex items-center justify-between">
+            <div>
+                <h3 class="text-xl font-bold text-white">Start New Chat</h3>
+                <p class="text-sm text-slate-400">Begin a new learning session</p>
+            </div>
+            <button onclick="closeNewChatModal()" class="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                <i class="bi bi-x-lg text-slate-400"></i>
+            </button>
+        </div>
+        
+        <form method="POST" action="{{ url_for('ai.new_chat') }}" class="p-6 space-y-4" id="newChatForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div>
+                <label class="block text-sm font-medium text-slate-300 mb-2 flex items-center gap-2">
+                    <i class="bi bi-chat-square-text text-blue-400"></i>
+                    Topic
+                </label>
+                <input type="text" name="topic" id="chatTopic" required
+                    class="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    placeholder="e.g., Calculus, Python Programming, Career Advice">
+                <div class="mt-2 flex flex-wrap gap-2">
+                    <button type="button" onclick="setTopic('Math Help')" class="text-xs px-3 py-1 rounded-full bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-all">Math</button>
+                    <button type="button" onclick="setTopic('Programming')" class="text-xs px-3 py-1 rounded-full bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-all">Programming</button>
+                    <button type="button" onclick="setTopic('Exam Prep')" class="text-xs px-3 py-1 rounded-full bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-all">Exam Prep</button>
+                    <button type="button" onclick="setTopic('Career Advice')" class="text-xs px-3 py-1 rounded-full bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-all">Career</button>
+                </div>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-slate-300 mb-2 flex items-center gap-2">
+                    <i class="bi bi-book text-emerald-400"></i>
+                    Related Course (Optional)
+                </label>
+                <select name="course_id" 
+                    class="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all">
+                    <option value="">General Learning</option>
+                    {% for course in courses|default([]) %}
+                    <option value="{{ course.id }}">{{ course.code }} - {{ course.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="pt-4 flex gap-3">
+                <button type="button" onclick="closeNewChatModal()" class="flex-1 px-4 py-3 rounded-xl border border-white/10 text-slate-300 hover:text-white hover:border-white/20 transition-all">Cancel</button>
+                <button type="submit" class="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium transition-all flex items-center justify-center gap-2">
+                    <i class="bi bi-chat-dots-fill"></i>
+                    Start Chat
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Quick Start Loading Overlay -->
+<div id="quickStartOverlay" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+    <div class="text-center">
+        <div class="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center animate-pulse">
+            <i class="bi bi-robot text-3xl text-white"></i>
+        </div>
+        <h3 class="text-xl font-bold text-white mb-2">Starting AI Session...</h3>
+        <p class="text-slate-400">Preparing your personalized learning environment</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Float animation */
+    @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
+    .float-element {
+        animation: float 3s ease-in-out infinite;
+    }
+    
+    /* Custom scrollbar for sessions list */
+    #sessionsList::-webkit-scrollbar {
+        width: 4px;
+    }
+    #sessionsList::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    #sessionsList::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 2px;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Modal Functions
+    function openNewChatModal() {
+        const modal = document.getElementById('newChatModal');
+        const content = document.getElementById('newChatModalContent');
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            content.classList.remove('scale-95', 'opacity-0');
+            content.classList.add('scale-100', 'opacity-100');
+            document.getElementById('chatTopic').focus();
+        }, 10);
+    }
+    
+    function closeNewChatModal() {
+        const modal = document.getElementById('newChatModal');
+        const content = document.getElementById('newChatModalContent');
+        content.classList.remove('scale-100', 'opacity-100');
+        content.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            document.getElementById('newChatForm').reset();
+        }, 300);
+    }
+    
+    function setTopic(topic) {
+        document.getElementById('chatTopic').value = topic;
+    }
+    
+    // Quick Start with Loading
+    function quickStart(intent) {
+        const overlay = document.getElementById('quickStartOverlay');
+        overlay.classList.remove('hidden');
+        
+        // Create form and submit programmatically
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ url_for("ai.new_chat") }}';
+        
+        const topicInput = document.createElement('input');
+        topicInput.type = 'hidden';
+        topicInput.name = 'topic';
+        topicInput.value = intent;
+        
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrf_token';
+        csrfInput.value = '{{ csrf_token() }}';
+        
+        form.appendChild(topicInput);
+        form.appendChild(csrfInput);
+        document.body.appendChild(form);
+        
+        setTimeout(() => {
+            form.submit();
+        }, 1500);
+    }
+    
+    // Filter Sessions
+    function filterSessions(searchTerm) {
+        const items = document.querySelectorAll('#sessionsList > a[data-topic]');
+        const term = searchTerm.toLowerCase();
+        
+        items.forEach(item => {
+            const topic = item.getAttribute('data-topic');
+            const course = item.getAttribute('data-course');
+            const matches = topic.includes(term) || course.includes(term);
+            
+            item.style.display = matches ? '' : 'none';
+        });
+    }
+    
+    // Close modal on backdrop click
+    document.getElementById('newChatModal').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) closeNewChatModal();
+    });
+    
+    // Keyboard shortcut
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'n' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            openNewChatModal();
+        }
+        if (e.key === 'Escape') {
+            closeNewChatModal();
+        }
+    });
+</script>
+{% endblock %}

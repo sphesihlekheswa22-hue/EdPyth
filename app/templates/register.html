@@ -1,0 +1,437 @@
+{% extends "base.html" %}
+
+{% block title %}Register - EduMind AI{% endblock %}
+
+{% block auth_content %}
+<div class="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+    <!-- Animated Background Elements -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+        <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse-slow"></div>
+        <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse-slow" style="animation-delay: 2s;"></div>
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-pink-500/10 rounded-full blur-3xl animate-pulse-slow" style="animation-delay: 4s;"></div>
+    </div>
+
+    <!-- Floating Particles -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+        <div class="absolute top-20 left-10 w-2 h-2 bg-purple-400 rounded-full animate-float opacity-60"></div>
+        <div class="absolute top-40 right-20 w-3 h-3 bg-blue-400 rounded-full animate-float opacity-40" style="animation-delay: 1s;"></div>
+        <div class="absolute bottom-32 left-1/4 w-2 h-2 bg-pink-400 rounded-full animate-float opacity-50" style="animation-delay: 2s;"></div>
+        <div class="absolute bottom-20 right-1/3 w-2 h-2 bg-emerald-400 rounded-full animate-float opacity-60" style="animation-delay: 3s;"></div>
+    </div>
+
+    <!-- Registration Card -->
+    <div class="relative z-10 w-full max-w-lg">
+        <!-- Logo Section -->
+        <div class="text-center mb-6">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 shadow-lg shadow-purple-500/30 mb-4 animate-float">
+                <i class="bi bi-mortarboard-fill text-3xl text-white"></i>
+            </div>
+            <h1 class="font-display text-3xl font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent mb-2">
+                EduMind AI
+            </h1>
+            <p class="text-slate-400">Join our learning community</p>
+        </div>
+
+        <!-- Progress Steps -->
+        <div class="flex items-center justify-center mb-8">
+            <div class="flex items-center gap-2">
+                <div class="step-indicator active" data-step="1">
+                    <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-blue-500/30">1</div>
+                    <span class="text-xs text-slate-400 mt-1 block text-center">Account</span>
+                </div>
+                <div class="w-12 h-0.5 bg-white/10 step-line"></div>
+                <div class="step-indicator" data-step="2">
+                    <div class="w-8 h-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-sm font-bold text-slate-400">2</div>
+                    <span class="text-xs text-slate-500 mt-1 block text-center">Profile</span>
+                </div>
+                <div class="w-12 h-0.5 bg-white/10 step-line"></div>
+                <div class="step-indicator" data-step="3">
+                    <div class="w-8 h-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-sm font-bold text-slate-400">3</div>
+                    <span class="text-xs text-slate-500 mt-1 block text-center">Role</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Glass Card -->
+        <div class="glass-card rounded-3xl p-8 shadow-2xl border border-white/10 backdrop-blur-xl">
+            <form method="POST" action="{{ url_for('auth.register') }}" class="space-y-5" id="registerForm">
+                {{ form.hidden_tag() }}
+
+                <!-- Step 1: Account Info -->
+                <div class="form-step active" data-step="1">
+                    <div class="text-center mb-6">
+                        <h2 class="font-display text-xl font-semibold text-white mb-1">Create Account</h2>
+                        <p class="text-slate-400 text-sm">Start with your basic information</p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- First Name -->
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-slate-300 flex items-center gap-2">
+                                <i class="bi bi-person text-slate-500"></i>
+                                First Name
+                            </label>
+                            {{ form.first_name(class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white placeholder-slate-500 transition-all hover:border-white/20", placeholder="John") }}
+                            {% if form.first_name.errors %}
+                                <div class="flex items-center gap-2 text-red-400 text-xs animate-fade-in">
+                                    <i class="bi bi-exclamation-circle"></i>
+                                    {% for error in form.first_name.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Last Name -->
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-slate-300 flex items-center gap-2">
+                                <i class="bi bi-person text-slate-500"></i>
+                                Last Name
+                            </label>
+                            {{ form.last_name(class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white placeholder-slate-500 transition-all hover:border-white/20", placeholder="Doe") }}
+                            {% if form.last_name.errors %}
+                                <div class="flex items-center gap-2 text-red-400 text-xs animate-fade-in">
+                                    <i class="bi bi-exclamation-circle"></i>
+                                    {% for error in form.last_name.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Email -->
+                    <div class="space-y-2 mt-4">
+                        <label class="text-sm font-medium text-slate-300 flex items-center gap-2">
+                            <i class="bi bi-envelope text-slate-500"></i>
+                            Email Address
+                        </label>
+                        {{ form.email(class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white placeholder-slate-500 transition-all hover:border-white/20", placeholder="john.doe@example.com") }}
+                        {% if form.email.errors %}
+                            <div class="flex items-center gap-2 text-red-400 text-xs animate-fade-in">
+                                <i class="bi bi-exclamation-circle"></i>
+                                {% for error in form.email.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <button type="button" onclick="nextStep(2)" class="w-full mt-6 py-3 px-4 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transform hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2 group">
+                        <span>Continue</span>
+                        <i class="bi bi-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                    </button>
+                </div>
+
+                <!-- Step 2: Password -->
+                <div class="form-step hidden" data-step="2">
+                    <div class="text-center mb-6">
+                        <h2 class="font-display text-xl font-semibold text-white mb-1">Secure Your Account</h2>
+                        <p class="text-slate-400 text-sm">Create a strong password</p>
+                    </div>
+
+                    <!-- Password -->
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-slate-300 flex items-center gap-2">
+                            <i class="bi bi-lock text-slate-500"></i>
+                            Password
+                        </label>
+                        <div class="relative">
+                            {{ form.password(class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white placeholder-slate-500 transition-all hover:border-white/20 pr-10", placeholder="••••••••", id="password") }}
+                            <button type="button" onclick="togglePassword('password')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors">
+                                <i class="bi bi-eye-slash toggle-icon"></i>
+                            </button>
+                        </div>
+                        <div class="password-strength mt-2">
+                            <div class="flex gap-1 h-1">
+                                <div class="strength-bar flex-1 rounded-full bg-white/10 transition-all duration-300"></div>
+                                <div class="strength-bar flex-1 rounded-full bg-white/10 transition-all duration-300"></div>
+                                <div class="strength-bar flex-1 rounded-full bg-white/10 transition-all duration-300"></div>
+                                <div class="strength-bar flex-1 rounded-full bg-white/10 transition-all duration-300"></div>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-1 password-hint">Use 8+ characters with mix of letters, numbers & symbols</p>
+                        </div>
+                        {% if form.password.errors %}
+                            <div class="flex items-center gap-2 text-red-400 text-xs animate-fade-in">
+                                <i class="bi bi-exclamation-circle"></i>
+                                {% for error in form.password.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Confirm Password -->
+                    <div class="space-y-2 mt-4">
+                        <label class="text-sm font-medium text-slate-300 flex items-center gap-2">
+                            <i class="bi bi-lock-fill text-slate-500"></i>
+                            Confirm Password
+                        </label>
+                        <div class="relative">
+                            {{ form.confirm_password(class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white placeholder-slate-500 transition-all hover:border-white/20 pr-10", placeholder="••••••••", id="confirm_password") }}
+                            <button type="button" onclick="togglePassword('confirm_password')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors">
+                                <i class="bi bi-eye-slash toggle-icon"></i>
+                            </button>
+                        </div>
+                        {% if form.confirm_password.errors %}
+                            <div class="flex items-center gap-2 text-red-400 text-xs animate-fade-in">
+                                <i class="bi bi-exclamation-circle"></i>
+                                {% for error in form.confirm_password.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="flex gap-3 mt-6">
+                        <button type="button" onclick="prevStep(1)" class="flex-1 py-3 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 font-semibold transition-all">
+                            Back
+                        </button>
+                        <button type="button" onclick="nextStep(3)" class="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transform hover:-translate-y-0.5 transition-all duration-200">
+                            Continue
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 3: Role Selection -->
+                <div class="form-step hidden" data-step="3">
+                    <div class="text-center mb-6">
+                        <h2 class="font-display text-xl font-semibold text-white mb-1">Select Your Role</h2>
+                        <p class="text-slate-400 text-sm">How will you use EduMind AI?</p>
+                    </div>
+
+                    <div class="space-y-3">
+                        <label class="role-card relative flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:border-blue-500/50 cursor-pointer transition-all group">
+                            {{ form.role(class="peer sr-only", value="student") }}
+                            <div class="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <i class="bi bi-person text-2xl text-blue-400"></i>
+                            </div>
+                            <div class="flex-1">
+                                <p class="font-semibold text-white">Student</p>
+                                <p class="text-xs text-slate-400">Access courses and track progress</p>
+                            </div>
+                            <div class="w-5 h-5 rounded-full border-2 border-white/20 peer-checked:border-blue-500 peer-checked:bg-blue-500 flex items-center justify-center transition-all">
+                                <i class="bi bi-check text-white text-xs opacity-0 peer-checked:opacity-100"></i>
+                            </div>
+                        </label>
+
+                        <label class="role-card relative flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:border-purple-500/50 cursor-pointer transition-all group">
+                            {{ form.role(class="peer sr-only", value="lecturer") }}
+                            <div class="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <i class="bi bi-person-badge text-2xl text-purple-400"></i>
+                            </div>
+                            <div class="flex-1">
+                                <p class="font-semibold text-white">Lecturer</p>
+                                <p class="text-xs text-slate-400">Create courses and manage content</p>
+                            </div>
+                            <div class="w-5 h-5 rounded-full border-2 border-white/20 peer-checked:border-purple-500 peer-checked:bg-purple-500 flex items-center justify-center transition-all">
+                                <i class="bi bi-check text-white text-xs opacity-0 peer-checked:opacity-100"></i>
+                            </div>
+                        </label>
+
+                        <label class="role-card relative flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/50 cursor-pointer transition-all group">
+                            {{ form.role(class="peer sr-only", value="career_advisor") }}
+                            <div class="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <i class="bi bi-briefcase text-2xl text-amber-400"></i>
+                            </div>
+                            <div class="flex-1">
+                                <p class="font-semibold text-white">Career Advisor</p>
+                                <p class="text-xs text-slate-400">Review CVs and guide students</p>
+                            </div>
+                            <div class="w-5 h-5 rounded-full border-2 border-white/20 peer-checked:border-amber-500 peer-checked:bg-amber-500 flex items-center justify-center transition-all">
+                                <i class="bi bi-check text-white text-xs opacity-0 peer-checked:opacity-100"></i>
+                            </div>
+                        </label>
+                    </div>
+                    {% if form.role.errors %}
+                        <div class="flex items-center gap-2 text-red-400 text-xs mt-2 animate-fade-in">
+                            <i class="bi bi-exclamation-circle"></i>
+                            {% for error in form.role.errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <div class="flex gap-3 mt-6">
+                        <button type="button" onclick="prevStep(2)" class="flex-1 py-3 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 font-semibold transition-all">
+                            Back
+                        </button>
+                        <button type="submit" class="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transform hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2 group">
+                            <span>Create Account</span>
+                            <i class="bi bi-check-lg group-hover:scale-110 transition-transform"></i>
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Login Link -->
+            <div class="mt-6 pt-6 border-t border-white/10 text-center">
+                <p class="text-slate-400 text-sm">
+                    Already have an account? 
+                    <a href="{{ url_for('auth.login') }}" class="text-blue-400 hover:text-blue-300 font-medium transition-colors hover:underline">
+                        Sign in
+                    </a>
+                </p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="mt-8 text-center">
+            <p class="text-slate-600 text-xs">
+                &copy; 2024 EduMind AI. All rights reserved.
+                <span class="mx-2">•</span>
+                <a href="#" class="hover:text-slate-400 transition-colors">Privacy</a>
+                <span class="mx-2">•</span>
+                <a href="#" class="hover:text-slate-400 transition-colors">Terms</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentStep = 1;
+
+    function nextStep(step) {
+        // Validate current step before proceeding
+        if (validateStep(currentStep)) {
+            document.querySelector(`.form-step[data-step="${currentStep}"]`).classList.add('hidden');
+            document.querySelector(`.form-step[data-step="${step}"]`).classList.remove('hidden');
+            updateStepIndicator(step);
+            currentStep = step;
+        }
+    }
+
+    function prevStep(step) {
+        document.querySelector(`.form-step[data-step="${currentStep}"]`).classList.add('hidden');
+        document.querySelector(`.form-step[data-step="${step}"]`).classList.remove('hidden');
+        updateStepIndicator(step);
+        currentStep = step;
+    }
+
+    function updateStepIndicator(step) {
+        document.querySelectorAll('.step-indicator').forEach((indicator, index) => {
+            const stepNum = index + 1;
+            const circle = indicator.querySelector('div');
+            const label = indicator.querySelector('span');
+            
+            if (stepNum === step) {
+                circle.className = 'w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-blue-500/30';
+                label.className = 'text-xs text-slate-400 mt-1 block text-center';
+            } else if (stepNum < step) {
+                circle.className = 'w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-emerald-500/30';
+                circle.innerHTML = '<i class="bi bi-check"></i>';
+                label.className = 'text-xs text-emerald-400 mt-1 block text-center';
+            } else {
+                circle.className = 'w-8 h-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-sm font-bold text-slate-400';
+                circle.innerHTML = stepNum;
+                label.className = 'text-xs text-slate-500 mt-1 block text-center';
+            }
+        });
+
+        // Update connecting lines
+        document.querySelectorAll('.step-line').forEach((line, index) => {
+            if (index < step - 1) {
+                line.classList.remove('bg-white/10');
+                line.classList.add('bg-emerald-500/50');
+            } else {
+                line.classList.add('bg-white/10');
+                line.classList.remove('bg-emerald-500/50');
+            }
+        });
+    }
+
+    function validateStep(step) {
+        // Add validation logic here
+        return true;
+    }
+
+    function togglePassword(fieldId) {
+        const input = document.getElementById(fieldId);
+        const icon = input.parentElement.querySelector('.toggle-icon');
+        
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.remove('bi-eye-slash');
+            icon.classList.add('bi-eye');
+        } else {
+            input.type = 'password';
+            icon.classList.remove('bi-eye');
+            icon.classList.add('bi-eye-slash');
+        }
+    }
+
+    // Password strength indicator
+    document.getElementById('password')?.addEventListener('input', function(e) {
+        const password = e.target.value;
+        const bars = document.querySelectorAll('.strength-bar');
+        const hint = document.querySelector('.password-hint');
+        
+        let strength = 0;
+        if (password.length >= 8) strength++;
+        if (password.match(/[a-z]/) && password.match(/[A-Z]/)) strength++;
+        if (password.match(/\d/)) strength++;
+        if (password.match(/[^a-zA-Z\d]/)) strength++;
+
+        bars.forEach((bar, index) => {
+            if (index < strength) {
+                if (strength <= 2) {
+                    bar.className = 'strength-bar flex-1 rounded-full bg-amber-500 transition-all duration-300';
+                    hint.className = 'text-xs text-amber-400 mt-1 password-hint';
+                    hint.textContent = 'Could be stronger';
+                } else if (strength === 3) {
+                    bar.className = 'strength-bar flex-1 rounded-full bg-blue-500 transition-all duration-300';
+                    hint.className = 'text-xs text-blue-400 mt-1 password-hint';
+                    hint.textContent = 'Good password';
+                } else {
+                    bar.className = 'strength-bar flex-1 rounded-full bg-emerald-500 transition-all duration-300';
+                    hint.className = 'text-xs text-emerald-400 mt-1 password-hint';
+                    hint.textContent = 'Strong password';
+                }
+            } else {
+                bar.className = 'strength-bar flex-1 rounded-full bg-white/10 transition-all duration-300';
+            }
+        });
+    });
+
+    // Role card selection
+    document.querySelectorAll('.role-card').forEach(card => {
+        card.addEventListener('click', function() {
+            document.querySelectorAll('.role-card').forEach(c => {
+                c.classList.remove('border-blue-500/50', 'border-purple-500/50', 'border-amber-500/50', 'bg-white/10');
+                c.classList.add('border-white/10', 'bg-white/5');
+            });
+            
+            const input = this.querySelector('input');
+            input.checked = true;
+            
+            if (input.value === 'student') {
+                this.classList.remove('border-white/10', 'bg-white/5');
+                this.classList.add('border-blue-500/50', 'bg-blue-500/10');
+            } else if (input.value === 'lecturer') {
+                this.classList.remove('border-white/10', 'bg-white/5');
+                this.classList.add('border-purple-500/50', 'bg-purple-500/10');
+            } else if (input.value === 'career_advisor') {
+                this.classList.remove('border-white/10', 'bg-white/5');
+                this.classList.add('border-amber-500/50', 'bg-amber-500/10');
+            }
+        });
+    });
+
+    // Form submission loading state
+    document.getElementById('registerForm').addEventListener('submit', function(e) {
+        const submitBtn = this.querySelector('button[type="submit"]');
+        submitBtn.innerHTML = '<i class="bi bi-arrow-repeat animate-spin"></i> Creating account...';
+        submitBtn.disabled = true;
+        submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
+    });
+</script>
+
+<style>
+    .form-step {
+        animation: slideUp 0.3s ease-out;
+    }
+    
+    .form-step.hidden {
+        display: none;
+    }
+    
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,447 @@
+{% extends "base.html" %}
+
+{% block title %}{{ session.topic or 'AI Tutor Session' }} - EduMind AI{% endblock %}
+
+{% block page_title %}{% endblock %}
+
+{% block content %}
+<!-- Chat Container -->
+<div class="h-[calc(100vh-140px)] flex flex-col">
+    <!-- Chat Header -->
+    <div class="glass-card rounded-2xl p-4 mb-4 flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-4">
+            <div class="relative">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                    <i class="bi bi-robot text-2xl text-white"></i>
+                </div>
+                <span class="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-slate-900 animate-pulse"></span>
+            </div>
+            <div>
+                <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                    {{ session.topic or 'AI Tutor Session' }}
+                    {% if session.course %}
+                    <span class="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-xs border border-blue-500/30">
+                        {{ session.course.code }}
+                    </span>
+                    {% endif %}
+                </h2>
+                <p class="text-xs text-slate-400 flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    AI Tutor Online • 
+                    {{ messages|length }} messages
+                </p>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-2">
+            <button onclick="clearChat()" class="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-all" title="Clear History">
+                <i class="bi bi-trash3"></i>
+            </button>
+            <button onclick="exportChat()" class="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-all" title="Export Chat">
+                <i class="bi bi-download"></i>
+            </button>
+            <div class="relative group">
+                <button class="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-all">
+                    <i class="bi bi-three-dots-vertical"></i>
+                </button>
+                <div class="absolute right-0 mt-2 w-48 glass-card rounded-xl p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                    <a href="{{ url_for('ai.chat') }}" class="block px-3 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/10 transition-colors">
+                        <i class="bi bi-clock-history mr-2"></i> All Sessions
+                    </a>
+                    <button onclick="renameSession()" class="w-full text-left px-3 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/10 transition-colors">
+                        <i class="bi bi-pencil mr-2"></i> Rename
+                    </button>
+                    <div class="border-t border-white/10 my-1"></div>
+                    <button onclick="endSession()" class="w-full text-left px-3 py-2 rounded-lg text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors">
+                        <i class="bi bi-box-arrow-right mr-2"></i> End Session
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Messages Area -->
+    <div id="messagesContainer" class="flex-1 overflow-y-auto space-y-4 mb-4 px-2 scroll-smooth">
+        {% if not messages %}
+        <!-- Welcome State -->
+        <div class="flex flex-col items-center justify-center h-full text-center">
+            <div class="w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center mb-6 float-element">
+                <i class="bi bi-stars text-4xl text-blue-400"></i>
+            </div>
+            <h3 class="text-xl font-bold text-white mb-2">How can I help you today?</h3>
+            <p class="text-slate-400 max-w-md mb-6">Ask me anything about your studies, career guidance, or specific course topics. I'm here to help you learn!</p>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg w-full">
+                <button onclick="sendQuickMessage('Explain this topic in simple terms')" class="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all text-left group">
+                    <i class="bi bi-lightbulb text-amber-400 mb-2 block text-xl group-hover:scale-110 transition-transform"></i>
+                    <span class="text-sm text-slate-300">Explain a topic</span>
+                </button>
+                <button onclick="sendQuickMessage('Help me solve this problem step by step')" class="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all text-left group">
+                    <i class="bi bi-calculator text-blue-400 mb-2 block text-xl group-hover:scale-110 transition-transform"></i>
+                    <span class="text-sm text-slate-300">Solve a problem</span>
+                </button>
+                <button onclick="sendQuickMessage('Quiz me on this subject')" class="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all text-left group">
+                    <i class="bi bi-question-circle text-emerald-400 mb-2 block text-xl group-hover:scale-110 transition-transform"></i>
+                    <span class="text-sm text-slate-300">Quiz me</span>
+                </button>
+                <button onclick="sendQuickMessage('Give me career advice')" class="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all text-left group">
+                    <i class="bi bi-briefcase text-purple-400 mb-2 block text-xl group-hover:scale-110 transition-transform"></i>
+                    <span class="text-sm text-slate-300">Career advice</span>
+                </button>
+            </div>
+        </div>
+        {% else %}
+            {% for message in messages %}
+            <div class="flex {% if message.role == 'user' %}justify-end{% else %}justify-start{% endif %} animate-fade-in" style="animation-delay: {{ loop.index0 * 0.05 }}s">
+                {% if message.role != 'user' %}
+                <!-- AI Avatar -->
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0 mr-3 mt-1">
+                    <i class="bi bi-robot text-sm text-white"></i>
+                </div>
+                {% endif %}
+                
+                <div class="max-w-[80%] sm:max-w-[70%] group">
+                    <!-- Message Bubble -->
+                    <div class="{% if message.role == 'user' %}glass-card bg-blue-500/10 border-blue-500/20{% else %}glass-card{% endif %} rounded-2xl p-4 relative">
+                        {% if message.role == 'assistant' %}
+                        <div class="absolute -top-2 -left-2 w-4 h-4 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <i class="bi bi-sparkle text-[8px] text-white"></i>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="prose prose-invert prose-sm max-w-none">
+                            {{ message.content|markdown|safe if message.role == 'assistant' else message.content }}
+                        </div>
+                        
+                        <!-- Message Actions -->
+                        <div class="flex items-center gap-2 mt-2 pt-2 {% if message.role == 'user' %}border-t border-blue-500/20{% else %}border-t border-white/10{% endif %} opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span class="text-xs text-slate-500">{{ message.created_at|datetimeformat('%H:%M') }}</span>
+                            {% if message.role == 'assistant' %}
+                            <button onclick="copyMessage(this)" class="p-1 text-slate-400 hover:text-white transition-colors" title="Copy">
+                                <i class="bi bi-copy text-xs"></i>
+                            </button>
+                            <button onclick="regenerateMessage({{ message.id }})" class="p-1 text-slate-400 hover:text-white transition-colors" title="Regenerate">
+                                <i class="bi bi-arrow-repeat text-xs"></i>
+                            </button>
+                            {% endif %}
+                            <button onclick="deleteMessage({{ message.id }})" class="p-1 text-slate-400 hover:text-red-400 transition-colors" title="Delete">
+                                <i class="bi bi-trash3 text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if message.role == 'user' %}
+                <!-- User Avatar -->
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-400 flex items-center justify-center flex-shrink-0 ml-3 mt-1">
+                    <span class="text-xs font-bold text-slate-900">{{ current_user.first_name[0] }}</span>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+            
+            <!-- Typing Indicator (Hidden by default) -->
+            <div id="typingIndicator" class="hidden flex justify-start">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0 mr-3">
+                    <i class="bi bi-robot text-sm text-white"></i>
+                </div>
+                <div class="glass-card rounded-2xl p-4 flex items-center gap-1">
+                    <span class="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 0s"></span>
+                    <span class="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
+                    <span class="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 0.4s"></span>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Input Area -->
+    <div class="glass-card rounded-2xl p-4 flex-shrink-0">
+        <form method="POST" action="{{ url_for('ai.send_message', session_id=session.id) }}" id="chatForm" class="flex items-end gap-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="flex-1 relative">
+                <textarea 
+                    name="message" 
+                    id="messageInput"
+                    rows="1"
+                    class="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all resize-none max-h-32"
+                    placeholder="Ask me anything..."
+                    required
+                    oninput="autoResize(this)"
+                    onkeydown="handleKeydown(event)"></textarea>
+                <div class="absolute right-3 bottom-3 text-xs text-slate-500 pointer-events-none">
+                    <span id="charCount">0</span>/1000
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <button type="button" onclick="toggleVoiceInput()" class="p-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-all" title="Voice Input">
+                    <i class="bi bi-mic-fill"></i>
+                </button>
+                
+                <button type="button" onclick="attachFile()" class="p-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-all" title="Attach File">
+                    <i class="bi bi-paperclip"></i>
+                </button>
+                
+                <button type="submit" id="sendButton" class="p-3 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white transition-all shadow-lg shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="bi bi-send-fill text-lg"></i>
+                </button>
+            </div>
+        </form>
+        
+        <div class="flex items-center justify-between mt-3 px-1">
+            <div class="flex items-center gap-2 text-xs text-slate-500">
+                <span class="flex items-center gap-1">
+                    <i class="bi bi-shield-check text-emerald-400"></i>
+                    AI responses are for educational purposes
+                </span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-xs text-slate-500">Press</span>
+                <kbd class="px-2 py-1 rounded bg-slate-800 text-slate-300 text-xs font-mono border border-white/10">Enter</kbd>
+                <span class="text-xs text-slate-500">to send,</span>
+                <kbd class="px-2 py-1 rounded bg-slate-800 text-slate-300 text-xs font-mono border border-white/10">Shift+Enter</kbd>
+                <span class="text-xs text-slate-500">for new line</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Voice Input Modal -->
+<div id="voiceModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div class="glass-card rounded-2xl p-8 max-w-sm w-full text-center">
+        <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-blue-500/20 flex items-center justify-center animate-pulse">
+            <i class="bi bi-mic-fill text-3xl text-blue-400"></i>
+        </div>
+        <h3 class="text-lg font-bold text-white mb-2">Listening...</h3>
+        <p class="text-slate-400 text-sm mb-6">Speak clearly into your microphone</p>
+        <div class="flex items-center justify-center gap-1 h-8 mb-6">
+            <div class="w-1 bg-blue-400 rounded-full animate-pulse" style="height: 20%; animation-delay: 0s"></div>
+            <div class="w-1 bg-blue-400 rounded-full animate-pulse" style="height: 60%; animation-delay: 0.1s"></div>
+            <div class="w-1 bg-blue-400 rounded-full animate-pulse" style="height: 40%; animation-delay: 0.2s"></div>
+            <div class="w-1 bg-blue-400 rounded-full animate-pulse" style="height: 80%; animation-delay: 0.3s"></div>
+            <div class="w-1 bg-blue-400 rounded-full animate-pulse" style="height: 30%; animation-delay: 0.4s"></div>
+        </div>
+        <button onclick="stopVoiceInput()" class="px-6 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all">
+            Cancel
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Custom scrollbar for messages */
+    #messagesContainer::-webkit-scrollbar {
+        width: 6px;
+    }
+    #messagesContainer::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    #messagesContainer::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+    }
+    #messagesContainer::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.2);
+    }
+    
+    /* Markdown content styling */
+    .prose pre {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 1rem;
+        border-radius: 0.5rem;
+        overflow-x: auto;
+    }
+    .prose code {
+        color: #60a5fa;
+        background: rgba(96, 165, 250, 0.1);
+        padding: 0.2rem 0.4rem;
+        border-radius: 0.25rem;
+        font-size: 0.875em;
+    }
+    .prose pre code {
+        background: transparent;
+        padding: 0;
+        color: inherit;
+    }
+    .prose ul {
+        list-style-type: disc;
+        padding-left: 1.5rem;
+    }
+    .prose ol {
+        list-style-type: decimal;
+        padding-left: 1.5rem;
+    }
+    .prose strong {
+        color: white;
+        font-weight: 600;
+    }
+    
+    /* Float animation for welcome icon */
+    @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
+    .float-element {
+        animation: float 3s ease-in-out infinite;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const messagesContainer = document.getElementById('messagesContainer');
+    const messageInput = document.getElementById('messageInput');
+    const chatForm = document.getElementById('chatForm');
+    const typingIndicator = document.getElementById('typingIndicator');
+    const charCount = document.getElementById('charCount');
+    
+    // Auto-scroll to bottom on load
+    if (messagesContainer) {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+    
+    // Auto-resize textarea
+    function autoResize(textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.min(textarea.scrollHeight, 128) + 'px';
+        
+        // Update char count
+        charCount.textContent = textarea.value.length;
+        
+        // Enable/disable send button
+        document.getElementById('sendButton').disabled = textarea.value.trim().length === 0;
+    }
+    
+    // Handle keyboard shortcuts
+    function handleKeydown(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (messageInput.value.trim()) {
+                chatForm.dispatchEvent(new Event('submit'));
+            }
+        }
+    }
+    
+    // Show typing indicator on submit
+    chatForm.addEventListener('submit', function(e) {
+        // Show typing indicator
+        typingIndicator.classList.remove('hidden');
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        
+        // Disable input temporarily
+        messageInput.disabled = true;
+        document.getElementById('sendButton').disabled = true;
+        
+        // Reset textarea
+        messageInput.style.height = 'auto';
+        charCount.textContent = '0';
+    });
+    
+    // Quick message buttons
+    function sendQuickMessage(text) {
+        messageInput.value = text;
+        autoResize(messageInput);
+        messageInput.focus();
+    }
+    
+    // Copy message to clipboard
+    function copyMessage(btn) {
+        const messageDiv = btn.closest('.glass-card').querySelector('.prose, div:not(.flex)');
+        const text = messageDiv.textContent;
+        
+        navigator.clipboard.writeText(text).then(() => {
+            const original = btn.innerHTML;
+            btn.innerHTML = '<i class="bi bi-check text-xs text-emerald-400"></i>';
+            setTimeout(() => btn.innerHTML = original, 2000);
+        });
+    }
+    
+    // Regenerate AI response
+    function regenerateMessage(messageId) {
+        console.log('Regenerating message:', messageId);
+        // Implement API call to regenerate
+    }
+    
+    // Delete message
+    function deleteMessage(messageId) {
+        if (confirm('Delete this message?')) {
+            console.log('Deleting message:', messageId);
+            // Implement API call to delete
+        }
+    }
+    
+    // Clear chat history
+    function clearChat() {
+        if (confirm('Clear all messages in this session? This cannot be undone.')) {
+            console.log('Clearing chat...');
+            // Implement API call to clear
+        }
+    }
+    
+    // Export chat
+    function exportChat() {
+        const chatText = Array.from(document.querySelectorAll('#messagesContainer .glass-card')).map(el => {
+            const isUser = el.classList.contains('bg-blue-500/10');
+            const role = isUser ? 'You' : 'AI Tutor';
+            const content = el.querySelector('.prose, div:not(.flex)').textContent;
+            return `${role}: ${content}`;
+        }).join('\n\n');
+        
+        const blob = new Blob([chatText], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `chat-session-${new Date().toISOString().split('T')[0]}.txt`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+    
+    // Rename session
+    function renameSession() {
+        const newName = prompt('Enter new session name:', '{{ session.topic or "Chat Session" }}');
+        if (newName) {
+            console.log('Renaming to:', newName);
+            // Implement API call to rename
+        }
+    }
+    
+    // End session
+    function endSession() {
+        if (confirm('End this tutoring session?')) {
+            window.location.href = '{{ url_for("ai.chat") }}';
+        }
+    }
+    
+    // Voice input (simulated)
+    function toggleVoiceInput() {
+        document.getElementById('voiceModal').classList.remove('hidden');
+        // In real implementation, start Web Speech API
+    }
+    
+    function stopVoiceInput() {
+        document.getElementById('voiceModal').classList.add('hidden');
+    }
+    
+    // File attachment (simulated)
+    function attachFile() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.pdf,.doc,.docx,.txt,.png,.jpg,.jpeg';
+        input.onchange = function() {
+            const file = this.files[0];
+            if (file) {
+                console.log('Attaching file:', file.name);
+                messageInput.value = `[Attached: ${file.name}]\n${messageInput.value}`;
+                autoResize(messageInput);
+            }
+        };
+        input.click();
+    }
+    
+    // Focus input on load
+    window.addEventListener('load', () => {
+        messageInput.focus();
+    });
+</script>
+{% endblock %}

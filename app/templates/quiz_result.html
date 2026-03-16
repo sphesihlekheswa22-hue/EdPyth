@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}Quiz Result: {{ quiz.title }} | EduMind AI{% endblock %}
+
+{% block page_title %}Quiz Result{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Result Header -->
+    <div class="surface-elevated rounded-2xl p-8 mb-6 text-center animate-fade-in">
+        <div class="mb-6">
+            {% if result.passed %}
+            <div class="w-20 h-20 mx-auto rounded-full bg-emerald-500/10 flex items-center justify-center mb-4">
+                <i data-lucide="trophy" class="w-10 h-10 text-emerald-400"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-emerald-400 mb-2">Congratulations!</h2>
+            <p class="text-slate-300">You passed this quiz!</p>
+            {% else %}
+            <div class="w-20 h-20 mx-auto rounded-full bg-amber-500/10 flex items-center justify-center mb-4">
+                <i data-lucide="refresh-cw" class="w-10 h-10 text-amber-400"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-amber-400 mb-2">Quiz Completed</h2>
+            <p class="text-slate-300">You didn't pass this time, but you can try again!</p>
+            {% endif %}
+        </div>
+        
+        <!-- Score Display -->
+        <div class="flex items-center justify-center gap-8 mb-6">
+            <div class="text-center">
+                <p class="text-4xl font-bold text-white mb-1">{{ result.percentage }}%</p>
+                <p class="text-sm text-slate-400">Your Score</p>
+            </div>
+            <div class="w-px h-12 bg-slate-700"></div>
+            <div class="text-center">
+                <p class="text-4xl font-bold text-slate-300 mb-1">{{ result.score }}/{{ result.total_points }}</p>
+                <p class="text-sm text-slate-400">Points</p>
+            </div>
+            <div class="w-px h-12 bg-slate-700"></div>
+            <div class="text-center">
+                <p class="text-4xl font-bold text-slate-300 mb-1">{{ quiz.passing_score }}%</p>
+                <p class="text-sm text-slate-400">Passing Score</p>
+            </div>
+        </div>
+        
+        <!-- Time Taken -->
+        <div class="flex items-center justify-center gap-2 text-slate-400">
+            <i data-lucide="clock" class="w-4 h-4"></i>
+            <span>Time taken: {{ result.time_taken // 60 }}m {{ result.time_taken % 60 }}s</span>
+        </div>
+    </div>
+    
+    <!-- Actions -->
+    <div class="flex justify-center gap-4 mb-8">
+        <a href="{{ url_for('quizzes.list_quizzes', course_id=course.id) }}" 
+           class="inline-flex items-center gap-2 px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-medium transition-colors focus-ring">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            Back to Quizzes
+        </a>
+        <a href="{{ url_for('courses.detail', course_id=course.id) }}" 
+           class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-medium transition-colors focus-ring">
+            <i data-lucide="book-open" class="w-4 h-4"></i>
+            Back to Course
+        </a>
+    </div>
+    
+    <!-- Question Review -->
+    <div class="surface rounded-2xl p-6">
+        <h3 class="text-lg font-semibold text-slate-100 mb-6 flex items-center gap-2">
+            <i data-lucide="list" class="w-5 h-5"></i>
+            Question Review
+        </h3>
+        
+        <div class="space-y-4">
+            {% for question in questions %}
+            <div class="p-4 rounded-xl border border-slate-800 bg-slate-900/50">
+                <div class="flex items-start gap-3 mb-3">
+                    <span class="flex-shrink-0 w-6 h-6 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center text-xs font-bold">
+                        {{ loop.index }}
+                    </span>
+                    <h4 class="text-slate-100 font-medium">{{ question.question_text }}</h4>
+                </div>
+                
+                <div class="ml-9 space-y-2">
+                    {% if question.question_type in ['multiple_choice', 'true_false'] %}
+                        {% set user_answer = answers.get(str(question.id), '') %}
+                        {% set correct_answer = question.correct_answer %}
+                        
+                        {% if user_answer == correct_answer %}
+                        <div class="flex items-center gap-2 text-emerald-400">
+                            <i data-lucide="check-circle" class="w-4 h-4"></i>
+                            <span class="text-sm">Your answer: {{ user_answer }}</span>
+                        </div>
+                        {% else %}
+                        <div class="flex items-center gap-2 text-rose-400">
+                            <i data-lucide="x-circle" class="w-4 h-4"></i>
+                            <span class="text-sm">Your answer: {{ user_answer or 'No answer' }}</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-emerald-400">
+                            <i data-lucide="check" class="w-4 h-4"></i>
+                            <span class="text-sm">Correct answer: {{ correct_answer }}</span>
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        {% set user_answer = answers.get(str(question.id), '') %}
+                        <div class="text-sm text-slate-300">
+                            <span class="text-slate-400">Your answer:</span> {{ user_answer or 'No answer' }}
+                        </div>
+                    {% endif %}
+                    
+                    <div class="text-xs text-slate-500">
+                        {{ question.points }} point(s)
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Initialize Lucide icons
+    lucide.createIcons();
+</script>
+{% endblock %}

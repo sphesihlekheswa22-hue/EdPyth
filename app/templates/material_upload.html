@@ -1,0 +1,496 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Material - EduMind AI{% endblock %}
+
+{% block page_title %}Upload Material{% endblock %}
+
+{% block extra_css %}
+<style>
+    .drop-zone {
+        transition: all 0.3s ease;
+        background: rgba(255, 255, 255, 0.03);
+        border: 2px dashed rgba(255, 255, 255, 0.1);
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+        background: rgba(59, 130, 246, 0.05);
+        border-color: rgba(59, 130, 246, 0.5);
+        transform: scale(1.01);
+    }
+    .drop-zone.drag-over {
+        box-shadow: 0 0 30px rgba(59, 130, 246, 0.2);
+    }
+    .file-preview {
+        animation: slideUp 0.3s ease-out;
+    }
+    @keyframes slideUp {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .upload-progress {
+        background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%);
+        background-size: 200% 100%;
+        animation: gradient-shift 2s ease infinite;
+    }
+    @keyframes gradient-shift {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+    .category-card {
+        transition: all 0.2s ease;
+    }
+    .category-card.selected {
+        background: rgba(59, 130, 246, 0.2);
+        border-color: rgba(59, 130, 246, 0.5);
+    }
+    .category-card:hover:not(.selected) {
+        background: rgba(255, 255, 255, 0.08);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8 animate-slide-up">
+    <div class="flex items-center gap-4">
+        <a href="{{ url_for('materials.list_materials', course_id=course.id) }}" 
+           class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all text-slate-300 hover:text-white">
+            <i class="bi bi-arrow-left"></i>
+            Back to Materials
+        </a>
+        <div>
+            <h2 class="font-display text-2xl font-bold text-white">Upload Material</h2>
+            <p class="text-slate-400 text-sm flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                {{ course.name }}
+                <span class="text-slate-600">•</span>
+                <span class="font-mono text-xs bg-slate-700 px-2 py-0.5 rounded">{{ course.code }}</span>
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Main Upload Form -->
+        <!-- Material Details and File Upload -->
+        <form method="POST" enctype="multipart/form-data" id="uploadForm" class="bento-item glass-card p-6 animate-slide-up" style="animation-delay: 0.1s">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                    <i class="bi bi-cloud-arrow-up text-blue-400"></i>
+                </div>
+                <h3 class="font-display font-semibold text-lg">File Upload</h3>
+            </div>
+
+            <div id="dropZone" class="drop-zone rounded-2xl p-8 text-center cursor-pointer relative overflow-hidden group">
+                <input type="file" name="file" id="fileInput" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" required>
+                
+                <!-- Default State -->
+                <div id="uploadPrompt" class="relative z-0">
+                    <div class="w-20 h-20 mx-auto mb-4 rounded-2xl bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                        <i class="bi bi-cloud-upload text-4xl text-blue-400"></i>
+                    </div>
+                    <h4 class="font-semibold text-white mb-2">Drag & drop your file here</h4>
+                    <p class="text-slate-400 text-sm mb-4">or click to browse from your device</p>
+                    <div class="flex items-center justify-center gap-3 text-xs text-slate-500">
+                        <span class="flex items-center gap-1 px-2 py-1 rounded bg-white/5"><i class="bi bi-filetype-pdf text-red-400"></i> PDF</span>
+                        <span class="flex items-center gap-1 px-2 py-1 rounded bg-white/5"><i class="bi bi-filetype-doc text-blue-400"></i> DOC</span>
+                        <span class="flex items-center gap-1 px-2 py-1 rounded bg-white/5"><i class="bi bi-filetype-ppt text-orange-400"></i> PPT</span>
+                        <span class="flex items-center gap-1 px-2 py-1 rounded bg-white/5"><i class="bi bi-filetype-mp4 text-purple-400"></i> Video</span>
+                    </div>
+                    <p class="text-xs text-slate-600 mt-3">Max file size: 100MB</p>
+                </div>
+
+                <!-- File Selected State -->
+                <div id="filePreview" class="hidden relative z-0 file-preview">
+                    <div class="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
+                        <div class="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center flex-shrink-0">
+                            <i id="fileIcon" class="bi bi-file-earmark text-3xl text-blue-400"></i>
+                        </div>
+                        <div class="flex-1 text-left min-w-0">
+                            <h4 id="fileName" class="font-medium text-white truncate mb-1">filename.pdf</h4>
+                            <p id="fileSize" class="text-sm text-slate-400 mb-2">2.5 MB</p>
+                            
+                            <!-- Progress Bar -->
+                            <div id="progressBar" class="hidden">
+                                <div class="h-2 bg-white/10 rounded-full overflow-hidden">
+                                    <div class="upload-progress h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                                </div>
+                                <p class="text-xs text-blue-400 mt-1 flex items-center gap-1">
+                                    <i class="bi bi-arrow-up-circle animate-pulse"></i>
+                                    <span id="progressText">Uploading...</span>
+                                </p>
+                            </div>
+                        </div>
+                        <button type="button" id="removeFile" class="p-2 rounded-lg hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Validation Message -->
+            <div id="validationMessage" class="hidden mt-4 rounded-xl p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-2">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <span id="validationText"></span>
+            </div>
+            
+            <hr class="my-6 border-white/10">
+            
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                    <i class="bi bi-pencil-square text-purple-400"></i>
+                </div>
+                <h3 class="font-display font-semibold text-lg">Material Details</h3>
+            </div>
+
+            <div class="space-y-5">
+                <!-- Title -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-slate-300 flex items-center gap-2">
+                        <i class="bi bi-type text-slate-500"></i>
+                        Title <span class="text-red-400">*</span>
+                    </label>
+                    <input type="text" name="title" required
+                           class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white placeholder-slate-500 transition-all"
+                           placeholder="e.g., Week 1: Introduction to Machine Learning">
+                </div>
+
+                <!-- Description -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-slate-300 flex items-center gap-2">
+                        <i class="bi bi-text-paragraph text-slate-500"></i>
+                        Description
+                    </label>
+                    <textarea name="description" rows="3"
+                              class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white placeholder-slate-500 resize-none transition-all"
+                              placeholder="Brief description of the material content..."></textarea>
+                </div>
+
+                <!-- Module Selection -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-slate-300 flex items-center gap-2">
+                        <i class="bi bi-folder text-slate-500"></i>
+                        Module
+                    </label>
+                    <select name="module_id" 
+                            class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white">
+                        <option value="">📁 General / No Module</option>
+                        {% for module in modules %}
+                        <option value="{{ module.id }}">📂 {{ module.title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Category Selection -->
+                <div class="space-y-3">
+                    <label class="text-sm font-medium text-slate-300 flex items-center gap-2">
+                        <i class="bi bi-tags text-slate-500"></i>
+                        Category
+                    </label>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <label class="category-card cursor-pointer p-4 rounded-xl bg-white/5 border border-white/10 text-center" onclick="selectCategory(this, 'general')">
+                            <input type="radio" name="category" value="general" class="sr-only" checked>
+                            <div class="w-10 h-10 mx-auto mb-2 rounded-lg bg-slate-600/30 flex items-center justify-center">
+                                <i class="bi bi-file-earmark text-xl text-slate-400"></i>
+                            </div>
+                            <span class="text-sm font-medium text-slate-300">General</span>
+                        </label>
+                        
+                        <label class="category-card cursor-pointer p-4 rounded-xl bg-white/5 border border-white/10 text-center" onclick="selectCategory(this, 'lecture')">
+                            <input type="radio" name="category" value="lecture" class="sr-only">
+                            <div class="w-10 h-10 mx-auto mb-2 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                                <i class="bi bi-easel text-xl text-blue-400"></i>
+                            </div>
+                            <span class="text-sm font-medium text-slate-300">Lecture</span>
+                        </label>
+                        
+                        <label class="category-card cursor-pointer p-4 rounded-xl bg-white/5 border border-white/10 text-center" onclick="selectCategory(this, 'assignment')">
+                            <input type="radio" name="category" value="assignment" class="sr-only">
+                            <div class="w-10 h-10 mx-auto mb-2 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                                <i class="bi bi-clipboard-check text-xl text-amber-400"></i>
+                            </div>
+                            <span class="text-sm font-medium text-slate-300">Assignment</span>
+                        </label>
+                        
+                        <label class="category-card cursor-pointer p-4 rounded-xl bg-white/5 border border-white/10 text-center" onclick="selectCategory(this, 'reading')">
+                            <input type="radio" name="category" value="reading" class="sr-only">
+                            <div class="w-10 h-10 mx-auto mb-2 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                                <i class="bi bi-book text-xl text-emerald-400"></i>
+                            </div>
+                            <span class="text-sm font-medium text-slate-300">Reading</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Publish Option -->
+                <div class="mt-5 p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" name="is_published" id="isPublished" class="w-5 h-5 rounded bg-white/10 border-white/20 text-blue-500 focus:ring-blue-500/50" checked>
+                        <div>
+                            <span class="text-white font-medium">Publish immediately</span>
+                            <p class="text-sm text-slate-400">Students will be able to see this material right away</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Submit Buttons -->
+            <div class="flex gap-3 mt-8 pt-6 border-t border-white/10">
+                <button type="button" onclick="history.back()" 
+                        class="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 font-semibold transition-all">
+                    Cancel
+                </button>
+                <button type="submit" id="submitBtn" disabled
+                        class="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold shadow-lg shadow-blue-500/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-0.5 hover:shadow-blue-500/40">
+                    <i class="bi bi-upload"></i>
+                    <span id="submitText">Upload Material</span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="space-y-6">
+        <!-- Upload Guidelines -->
+        <div class="bento-item glass-card p-6 animate-slide-up" style="animation-delay: 0.3s">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                    <i class="bi bi-info-circle text-amber-400"></i>
+                </div>
+                <h3 class="font-display font-semibold text-lg">Guidelines</h3>
+            </div>
+            
+            <div class="space-y-3 text-sm text-slate-400">
+                <div class="flex gap-3">
+                    <i class="bi bi-check-circle-fill text-emerald-400 mt-0.5"></i>
+                    <span>Use clear, descriptive titles</span>
+                </div>
+                <div class="flex gap-3">
+                    <i class="bi bi-check-circle-fill text-emerald-400 mt-0.5"></i>
+                    <span>Organize by module when possible</span>
+                </div>
+                <div class="flex gap-3">
+                    <i class="bi bi-check-circle-fill text-emerald-400 mt-0.5"></i>
+                    <span>Keep files under 100MB</span>
+                </div>
+                <div class="flex gap-3">
+                    <i class="bi bi-check-circle-fill text-emerald-400 mt-0.5"></i>
+                    <span>Supported: PDF, DOC, PPT, MP4, ZIP</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Uploads -->
+        {% if recent_materials %}
+        <div class="bento-item glass-card p-6 animate-slide-up" style="animation-delay: 0.4s">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                    <i class="bi bi-clock-history text-purple-400"></i>
+                </div>
+                <h3 class="font-display font-semibold text-lg">Recent Uploads</h3>
+            </div>
+            
+            <div class="space-y-3">
+                {% for material in recent_materials[:5] %}
+                <div class="flex items-center gap-3 p-3 rounded-xl bg-white/5">
+                    <div class="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center">
+                        <i class="bi bi-file-earmark-text text-slate-400"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm text-white truncate">{{ material.title }}</p>
+                        <p class="text-xs text-slate-500">{{ material.created_at.strftime('%b %d') }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Storage Usage -->
+        <div class="bento-item glass-card p-6 animate-slide-up" style="animation-delay: 0.5s">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-display font-semibold text-sm">Storage Usage</h3>
+                <span class="text-xs text-slate-400">{{ storage_used }} / 10GB</span>
+            </div>
+            <div class="h-2 bg-white/10 rounded-full overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-blue-500 to-purple-600 rounded-full" style="width: {{ storage_percentage }}%"></div>
+            </div>
+            <p class="text-xs text-slate-500 mt-2">{{ storage_remaining }} GB remaining</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const uploadPrompt = document.getElementById('uploadPrompt');
+    const filePreview = document.getElementById('filePreview');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    const fileIcon = document.getElementById('fileIcon');
+    const removeFile = document.getElementById('removeFile');
+    const submitBtn = document.getElementById('submitBtn');
+    const submitText = document.getElementById('submitText');
+    const validationMessage = document.getElementById('validationMessage');
+    const validationText = document.getElementById('validationText');
+
+    // Prevent default drag behaviors
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+        document.body.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    // Highlight drop zone
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, highlight, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, unhighlight, false);
+    });
+
+    function highlight(e) {
+        dropZone.classList.add('drag-over');
+    }
+
+    function unhighlight(e) {
+        dropZone.classList.remove('drag-over');
+    }
+
+    // Handle dropped files
+    dropZone.addEventListener('drop', handleDrop, false);
+
+    function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        handleFiles(files);
+    }
+
+    // Handle file input change
+    fileInput.addEventListener('change', function() {
+        handleFiles(this.files);
+    });
+
+    function handleFiles(files) {
+        if (files.length > 0) {
+            const file = files[0];
+            validateAndPreview(file);
+        }
+    }
+
+    function validateAndPreview(file) {
+        validationMessage.classList.add('hidden');
+        
+        // Check file size (100MB max)
+        const maxSize = 100 * 1024 * 1024;
+        if (file.size > maxSize) {
+            showValidation('File size must be less than 100MB.');
+            return;
+        }
+
+        // Show preview
+        showFilePreview(file);
+    }
+
+    function showValidation(message) {
+        validationText.textContent = message;
+        validationMessage.classList.remove('hidden');
+        submitBtn.disabled = true;
+    }
+
+    function showFilePreview(file) {
+        uploadPrompt.classList.add('hidden');
+        filePreview.classList.remove('hidden');
+        
+        fileName.textContent = file.name;
+        fileSize.textContent = formatFileSize(file.size);
+        
+        // Set appropriate icon
+        const extension = file.name.split('.').pop().toLowerCase();
+        const iconMap = {
+            'pdf': 'bi-file-earmark-pdf text-red-400',
+            'doc': 'bi-file-earmark-word text-blue-400',
+            'docx': 'bi-file-earmark-word text-blue-400',
+            'ppt': 'bi-file-earmark-ppt text-orange-400',
+            'pptx': 'bi-file-earmark-ppt text-orange-400',
+            'mp4': 'bi-file-earmark-play text-purple-400',
+            'zip': 'bi-file-earmark-zip text-yellow-400'
+        };
+        
+        fileIcon.className = `bi ${iconMap[extension] || 'bi-file-earmark text-blue-400'} text-3xl`;
+        
+        submitBtn.disabled = false;
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    // Remove file
+    removeFile.addEventListener('click', function(e) {
+        e.preventDefault();
+        fileInput.value = '';
+        uploadPrompt.classList.remove('hidden');
+        filePreview.classList.add('hidden');
+        validationMessage.classList.add('hidden');
+        submitBtn.disabled = true;
+    });
+
+    // Category selection
+    function selectCategory(element, value) {
+        document.querySelectorAll('.category-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+        element.classList.add('selected');
+        element.querySelector('input').checked = true;
+    }
+
+    // Form submission
+    document.getElementById('uploadForm').addEventListener('submit', function(e) {
+        // Debug: Check file input state
+        const fileInput = document.getElementById('fileInput');
+        console.log('File input files:', fileInput.files);
+        console.log('File input value:', fileInput.value);
+        console.log('Form enctype:', this.enctype);
+        
+        if (!fileInput.files || fileInput.files.length === 0) {
+            e.preventDefault();
+            alert('Please select a file first.');
+            return;
+        }
+        
+        const progressBar = document.getElementById('progressBar');
+        const progressInner = progressBar.querySelector('.upload-progress');
+        
+        progressBar.classList.remove('hidden');
+        submitBtn.disabled = true;
+        submitText.textContent = 'Uploading...';
+        
+        // Simulate upload progress - let form submit naturally after delay
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += Math.random() * 20;
+            if (progress > 90) progress = 90;
+            
+            progressInner.style.width = progress + '%';
+            
+            if (progress >= 90) {
+                clearInterval(interval);
+            }
+        }, 300);
+    });
+</script>
+{% endblock %}

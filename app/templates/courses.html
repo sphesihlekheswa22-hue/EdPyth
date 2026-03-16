@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}Courses - EduMind AI{% endblock %}
+
+{% block page_title %}Courses{% endblock %}
+
+{% block content %}
+<!-- Header Actions -->
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 animate-slide-up">
+    <div>
+        <p class="text-slate-400 text-sm">
+            {% if current_user.role == 'student' %}
+                Explore and manage your enrolled courses
+            {% elif current_user.role == 'lecturer' %}
+                Manage your teaching courses
+            {% else %}
+                Manage all system courses
+            {% endif %}
+        </p>
+    </div>
+    
+    {% if current_user.role == 'lecturer' or current_user.role == 'admin' %}
+    <a href="{{ url_for('courses.create') }}" class="group relative inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl font-semibold text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all hover:-translate-y-0.5 overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+        <i class="bi bi-plus-circle relative z-10 group-hover:rotate-90 transition-transform duration-300"></i>
+        <span class="relative z-10">Create Course</span>
+    </a>
+    {% endif %}
+</div>
+
+<!-- Courses Grid -->
+{% if courses %}
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+    {% for course in courses %}
+    <div class="group animate-slide-up" style="animation-delay: {{ loop.index * 0.05 }}s">
+        <div class="glass-card rounded-2xl overflow-hidden h-full flex flex-col hover:scale-[1.02] transition-all duration-300 relative">
+            <!-- Course Header with Gradient -->
+            <div class="h-24 bg-gradient-to-br from-blue-600/30 via-purple-600/20 to-pink-600/30 relative overflow-hidden">
+                <div class="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.03\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-50"></div>
+                
+                <!-- Course Code Badge -->
+                <div class="absolute top-4 left-4">
+                    <span class="px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-xs font-mono font-semibold text-white/90">
+                        {{ course.code }}
+                    </span>
+                </div>
+                
+                <!-- Credits Badge -->
+                <div class="absolute top-4 right-4">
+                    <span class="px-2.5 py-1 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-xs font-medium text-white/80 flex items-center gap-1">
+                        <i class="bi bi-star-fill text-amber-400 text-xs"></i>
+                        {{ course.credits }} credits
+                    </span>
+                </div>
+            </div>
+            
+            <!-- Course Content -->
+            <div class="p-5 flex-1 flex flex-col">
+                <h3 class="font-display font-bold text-xl text-white mb-2 line-clamp-2 group-hover:text-blue-400 transition-colors">
+                    {{ course.name }}
+                </h3>
+                
+                <p class="text-slate-400 text-sm mb-4 line-clamp-2 flex-1">
+                    {{ course.description[:120] }}{% if course.description and course.description|length > 120 %}...{% endif %}
+                </p>
+                
+                <!-- Meta Info -->
+                <div class="flex items-center justify-between text-sm text-slate-500 mb-4 pt-4 border-t border-white/10">
+                    <div class="flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-xs font-bold text-white">
+                            {{ course.lecturer.user.first_name[0] if course.lecturer and course.lecturer.user else '?' }}
+                        </div>
+                        <span class="truncate max-w-[120px]">
+                            {{ course.lecturer.user.full_name if course.lecturer else 'TBA' }}
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <i class="bi bi-people-fill text-blue-400"></i>
+                        <span class="font-medium text-slate-300">{{ course.get_student_count() }}</span>
+                    </div>
+                </div>
+                
+                <!-- Action Button -->
+                <a href="{{ url_for('courses.detail', course_id=course.id) }}" 
+                   class="w-full py-2.5 rounded-xl bg-white/5 hover:bg-blue-500/20 border border-white/10 hover:border-blue-500/30 text-slate-300 hover:text-blue-400 font-medium text-sm transition-all flex items-center justify-center gap-2 group/btn">
+                    View Details
+                    <i class="bi bi-arrow-right group-hover/btn:translate-x-1 transition-transform"></i>
+                </a>
+            </div>
+            
+            <!-- Hover Glow Effect -->
+            <div class="absolute -inset-px bg-gradient-to-r from-blue-500/0 via-purple-500/0 to-pink-500/0 group-hover:from-blue-500/20 group-hover:via-purple-500/10 group-hover:to-pink-500/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Pagination hint (if needed) -->
+{% if courses|length > 9 %}
+<div class="mt-8 text-center">
+    <p class="text-slate-500 text-sm">Showing {{ courses|length }} courses</p>
+</div>
+{% endif %}
+
+{% else %}
+<!-- Empty State -->
+<div class="animate-slide-up">
+    <div class="glass-card rounded-2xl p-12 text-center max-w-2xl mx-auto">
+        <div class="w-24 h-24 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center relative">
+            <div class="absolute inset-0 rounded-2xl bg-blue-500/20 animate-pulse"></div>
+            <i class="bi bi-journal-x text-4xl text-slate-400 relative z-10"></i>
+        </div>
+        
+        <h3 class="font-display text-2xl font-bold text-white mb-3">No Courses Available</h3>
+        <p class="text-slate-400 mb-6 max-w-md mx-auto">
+            {% if current_user.role == 'lecturer' %}
+                You haven't created any courses yet. Get started by creating your first course.
+            {% elif current_user.role == 'admin' %}
+                The system doesn't have any courses yet. Create the first course to get started.
+            {% else %}
+                No courses are available at the moment. Check back later or contact your administrator.
+            {% endif %}
+        </p>
+        
+        {% if current_user.role == 'lecturer' or current_user.role == 'admin' %}
+        <a href="{{ url_for('courses.create') }}" class="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl font-semibold text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all hover:-translate-y-0.5">
+            <i class="bi bi-plus-circle"></i>
+            Create First Course
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

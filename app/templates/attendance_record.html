@@ -1,0 +1,413 @@
+{% extends "base.html" %}
+
+{% block title %}Record Attendance - EduMind AI{% endblock %}
+
+{% block page_title %}Record Attendance{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Header Card -->
+    <div class="glass-card rounded-2xl p-6 mb-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+                    <i class="bi bi-clipboard-check-fill text-2xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold text-white">Record Attendance</h2>
+                    <p class="text-slate-400 flex items-center gap-2">
+                        <i class="bi bi-calendar3"></i>
+                        {{ date|default('Today') }}
+                        <span class="text-slate-600">•</span>
+                        <span class="text-blue-400">{{ course.name|default('Course Name') }}</span>
+                    </p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <div class="glass-card rounded-xl px-4 py-2 flex items-center gap-3">
+                    <div class="text-center">
+                        <p class="text-xs text-slate-500 uppercase tracking-wider">Present</p>
+                        <p class="text-xl font-bold text-emerald-400" id="presentCount">0</p>
+                    </div>
+                    <div class="w-px h-8 bg-white/10"></div>
+                    <div class="text-center">
+                        <p class="text-xs text-slate-500 uppercase tracking-wider">Absent</p>
+                        <p class="text-xl font-bold text-red-400" id="absentCount">0</p>
+                    </div>
+                    <div class="w-px h-8 bg-white/10"></div>
+                    <div class="text-center">
+                        <p class="text-xs text-slate-500 uppercase tracking-wider">Total</p>
+                        <p class="text-xl font-bold text-white" id="totalCount">{{ students|length }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions Bar -->
+    <div class="glass-card rounded-xl p-3 mb-4 flex flex-wrap items-center gap-3">
+        <span class="text-sm text-slate-400 mr-2">Quick Set:</span>
+        <button onclick="setAllStatus('present')" class="px-4 py-2 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 rounded-lg transition-all text-sm font-medium flex items-center gap-2">
+            <i class="bi bi-check-circle-fill"></i> All Present
+        </button>
+        <button onclick="setAllStatus('absent')" class="px-4 py-2 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg transition-all text-sm font-medium flex items-center gap-2">
+            <i class="bi bi-x-circle-fill"></i> All Absent
+        </button>
+        <div class="flex-1"></div>
+        <button onclick="markRestAbsent()" class="px-4 py-2 bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 rounded-lg transition-all text-sm font-medium">
+            Mark Unset as Absent
+        </button>
+    </div>
+
+    <!-- Attendance Form -->
+    <form method="POST" id="attendanceForm" class="space-y-4">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="date" value="{{ date }}">
+        <!-- Search & Filter -->
+        <div class="flex gap-3 mb-4">
+            <div class="relative flex-1">
+                <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                <input type="text" id="studentSearch" placeholder="Search students..." 
+                    class="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    oninput="filterStudents(this.value)">
+            </div>
+            <select id="statusFilter" onchange="filterByStatus(this.value)" 
+                class="px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-slate-300 focus:outline-none focus:border-blue-500/50 min-w-[140px]">
+                <option value="all">All Students</option>
+                <option value="unset">Not Set</option>
+                <option value="present">Present</option>
+                <option value="absent">Absent</option>
+                <option value="late">Late</option>
+            </select>
+        </div>
+
+        <!-- Students Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="studentsGrid">
+            {% for student in students %}
+            <div class="student-card glass-card rounded-xl p-4 transition-all hover:bg-white/5" 
+                 data-student-id="{{ student.student.id }}"
+                 data-name="{{ student.student.user.full_name|lower }}"
+                 data-current-status="{{ existing_records.get(student.student.id).status|default('unset') }}">
+                
+                <div class="flex items-center justify-between gap-4">
+                    <div class="flex items-center gap-3 flex-1 min-w-0">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-{{ ['blue', 'purple', 'emerald', 'amber', 'pink'][loop.index0 % 5] }}-400 to-{{ ['blue', 'purple', 'emerald', 'amber', 'pink'][loop.index0 % 5] }}-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                            {{ student.student.user.first_name[0] }}{{ student.student.user.last_name[0] }}
+                        </div>
+                        <div class="min-w-0">
+                            <p class="font-medium text-white truncate">{{ student.student.user.full_name }}</p>
+                            <p class="text-xs text-slate-500">{{ student.student.student_id|default('ID: ' ~ student.student.id) }}</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Status Selector -->
+                    <div class="flex items-center gap-2">
+                        <button type="button" 
+                            onclick="setStudentStatus({{ student.student.id }}, 'present')"
+                            class="status-btn w-10 h-10 rounded-lg flex items-center justify-center transition-all {{ 'bg-emerald-500/20 text-emerald-400 border-2 border-emerald-500/50' if existing_records.get(student.student.id) and existing_records[student.student.id].status == 'present' else 'bg-slate-800 text-slate-500 hover:bg-emerald-500/10 hover:text-emerald-400' }}"
+                            data-status="present"
+                            title="Present">
+                            <i class="bi bi-check-lg text-lg"></i>
+                        </button>
+                        
+                        <button type="button"
+                            onclick="setStudentStatus({{ student.student.id }}, 'late')"
+                            class="status-btn w-10 h-10 rounded-lg flex items-center justify-center transition-all {{ 'bg-amber-500/20 text-amber-400 border-2 border-amber-500/50' if existing_records.get(student.student.id) and existing_records[student.student.id].status == 'late' else 'bg-slate-800 text-slate-500 hover:bg-amber-500/10 hover:text-amber-400' }}"
+                            data-status="late"
+                            title="Late">
+                            <i class="bi bi-clock text-lg"></i>
+                        </button>
+                        
+                        <button type="button"
+                            onclick="setStudentStatus({{ student.student.id }}, 'absent')"
+                            class="status-btn w-10 h-10 rounded-lg flex items-center justify-center transition-all {{ 'bg-red-500/20 text-red-400 border-2 border-red-500/50' if existing_records.get(student.student.id) and existing_records[student.student.id].status == 'absent' else 'bg-slate-800 text-slate-500 hover:bg-red-500/10 hover:text-red-400' }}"
+                            data-status="absent"
+                            title="Absent">
+                            <i class="bi bi-x-lg text-lg"></i>
+                        </button>
+                        
+                        <button type="button"
+                            onclick="setStudentStatus({{ student.student.id }}, 'excused')"
+                            class="status-btn w-10 h-10 rounded-lg flex items-center justify-center transition-all {{ 'bg-blue-500/20 text-blue-400 border-2 border-blue-500/50' if existing_records.get(student.student.id) and existing_records[student.student.id].status == 'excused' else 'bg-slate-800 text-slate-500 hover:bg-blue-500/10 hover:text-blue-400' }}"
+                            data-status="excused"
+                            title="Excused">
+                            <i class="bi bi-file-medical text-lg"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Hidden Select for Form Submission -->
+                <select name="status_{{ student.student.id }}" class="hidden" id="select_{{ student.student.id }}">
+                    <option value="present" {{ 'selected' if existing_records.get(student.student.id) and existing_records[student.student.id].status == 'present' else '' }}>Present</option>
+                    <option value="late" {{ 'selected' if existing_records.get(student.student.id) and existing_records[student.student.id].status == 'late' else '' }}>Late</option>
+                    <option value="absent" {{ 'selected' if existing_records.get(student.student.id) and existing_records[student.student.id].status == 'absent' else '' }}>Absent</option>
+                    <option value="excused" {{ 'selected' if existing_records.get(student.student.id) and existing_records[student.student.id].status == 'excused' else '' }}>Excused</option>
+                </select>
+                
+                <!-- Status Indicator -->
+                <div class="mt-3 flex items-center gap-2 text-xs status-indicator" id="indicator_{{ student.student.id }}">
+                    {% if existing_records.get(student.student.id) %}
+                        {% set status = existing_records[student.student.id].status %}
+                        <span class="px-2 py-1 rounded-full {{ 'bg-emerald-500/20 text-emerald-400' if status == 'present' else 'bg-amber-500/20 text-amber-400' if status == 'late' else 'bg-red-500/20 text-red-400' if status == 'absent' else 'bg-blue-500/20 text-blue-400' }} flex items-center gap-1">
+                            <i class="bi bi-{{ 'check-circle' if status == 'present' else 'clock' if status == 'late' else 'x-circle' if status == 'absent' else 'file-medical' }}"></i>
+                            {{ status|title }}
+                        </span>
+                    {% else %}
+                        <span class="px-2 py-1 rounded-full bg-slate-700 text-slate-400 flex items-center gap-1">
+                            <i class="bi bi-dash-circle"></i>
+                            Not Recorded
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            <div class="col-span-full text-center py-12">
+                <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-slate-800/50 flex items-center justify-center">
+                    <i class="bi bi-people text-3xl text-slate-600"></i>
+                </div>
+                <p class="text-slate-400">No students enrolled in this course</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Submit Actions -->
+        <div class="glass-card rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sticky bottom-4 z-10">
+            <div class="flex items-center gap-4 text-sm">
+                <span class="text-slate-400">
+                    <span class="text-white font-bold" id="recordedCount">0</span> of {{ students|length }} recorded
+                </span>
+                <div class="w-32 h-2 bg-slate-800 rounded-full overflow-hidden">
+                    <div class="h-full bg-gradient-to-r from-blue-500 to-emerald-500 rounded-full transition-all duration-300" id="progressBar" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <button type="button" onclick="saveDraft()" class="px-4 py-2.5 border border-white/10 text-slate-300 hover:text-white hover:border-white/20 rounded-xl transition-all text-sm font-medium flex items-center gap-2">
+                    <i class="bi bi-save"></i>
+                    Save Draft
+                </button>
+                <button type="submit" class="px-6 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-blue-500/25">
+                    <i class="bi bi-check-circle-fill"></i>
+                    Save Attendance
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Success Toast -->
+<div id="successToast" class="fixed bottom-4 right-4 glass-card rounded-xl p-4 flex items-center gap-3 transform translate-y-20 opacity-0 transition-all duration-300 z-50">
+    <div class="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
+        <i class="bi bi-check-lg text-emerald-400 text-xl"></i>
+    </div>
+    <div>
+        <p class="text-sm font-medium text-white">Attendance Saved!</p>
+        <p class="text-xs text-slate-400">Redirecting to course page...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Initialize counts
+    let presentCount = 0;
+    let absentCount = 0;
+    let recordedCount = 0;
+    const totalStudents = {{ students|length }};
+    
+    // Initialize from existing records
+    document.addEventListener('DOMContentLoaded', () => {
+        {% for student in students %}
+            {% if existing_records.get(student.student.id) %}
+                {% set status = existing_records[student.student.id].status %}
+                {% if status == 'present' %}
+                    presentCount++;
+                    recordedCount++;
+                {% elif status == 'absent' %}
+                    absentCount++;
+                    recordedCount++;
+                {% else %}
+                    recordedCount++;
+                {% endif %}
+            {% endif %}
+        {% endfor %}
+        updateCounts();
+    });
+    
+    // Set status for a student
+    function setStudentStatus(studentId, status) {
+        const card = document.querySelector(`[data-student-id="${studentId}"]`);
+        const select = document.getElementById(`select_${studentId}`);
+        const indicator = document.getElementById(`indicator_${studentId}`);
+        const buttons = card.querySelectorAll('.status-btn');
+        
+        // Update hidden select
+        select.value = status;
+        
+        // Update button styles
+        buttons.forEach(btn => {
+            const btnStatus = btn.getAttribute('data-status');
+            if (btnStatus === status) {
+                // Active state
+                const colors = {
+                    'present': 'bg-emerald-500/20 text-emerald-400 border-2 border-emerald-500/50',
+                    'late': 'bg-amber-500/20 text-amber-400 border-2 border-amber-500/50',
+                    'absent': 'bg-red-500/20 text-red-400 border-2 border-red-500/50',
+                    'excused': 'bg-blue-500/20 text-blue-400 border-2 border-blue-500/50'
+                };
+                btn.className = `status-btn w-10 h-10 rounded-lg flex items-center justify-center transition-all ${colors[btnStatus]}`;
+            } else {
+                // Inactive state
+                btn.className = 'status-btn w-10 h-10 rounded-lg flex items-center justify-center transition-all bg-slate-800 text-slate-500 hover:bg-opacity-80';
+            }
+        });
+        
+        // Update indicator
+        const statusConfig = {
+            'present': { icon: 'check-circle', color: 'emerald', text: 'Present' },
+            'late': { icon: 'clock', color: 'amber', text: 'Late' },
+            'absent': { icon: 'x-circle', color: 'red', text: 'Absent' },
+            'excused': { icon: 'file-medical', color: 'blue', text: 'Excused' }
+        };
+        const config = statusConfig[status];
+        indicator.innerHTML = `
+            <span class="px-2 py-1 rounded-full bg-${config.color}-500/20 text-${config.color}-400 flex items-center gap-1">
+                <i class="bi bi-${config.icon}"></i>
+                ${config.text}
+            </span>
+        `;
+        
+        // Update counts
+        updateCounts();
+        
+        // Animation feedback
+        card.classList.add('scale-105');
+        setTimeout(() => card.classList.remove('scale-105'), 200);
+    }
+    
+    // Set all students to a status
+    function setAllStatus(status) {
+        if (!confirm(`Mark all ${totalStudents} students as ${status}?`)) return;
+        
+        document.querySelectorAll('.student-card').forEach(card => {
+            const studentId = card.getAttribute('data-student-id');
+            setStudentStatus(studentId, status);
+        });
+    }
+    
+    // Mark unset students as absent
+    function markRestAbsent() {
+        let count = 0;
+        document.querySelectorAll('.student-card').forEach(card => {
+            const studentId = card.getAttribute('data-student-id');
+            const currentStatus = card.getAttribute('data-current-status');
+            if (currentStatus === 'unset' || !currentStatus) {
+                setStudentStatus(studentId, 'absent');
+                count++;
+            }
+        });
+        
+        if (count > 0) {
+            showToast(`Marked ${count} unset students as absent`);
+        }
+    }
+    
+    // Update counters
+    function updateCounts() {
+        presentCount = 0;
+        absentCount = 0;
+        recordedCount = 0;
+        
+        document.querySelectorAll('select[name^="status_"]').forEach(select => {
+            if (select.value) {
+                recordedCount++;
+                if (select.value === 'present') presentCount++;
+                else if (select.value === 'absent') absentCount++;
+            }
+        });
+        
+        document.getElementById('presentCount').textContent = presentCount;
+        document.getElementById('absentCount').textContent = absentCount;
+        document.getElementById('recordedCount').textContent = recordedCount;
+        document.getElementById('progressBar').style.width = `${(recordedCount / totalStudents * 100)}%`;
+    }
+    
+    // Filter students by search
+    function filterStudents(searchTerm) {
+        const term = searchTerm.toLowerCase();
+        document.querySelectorAll('.student-card').forEach(card => {
+            const name = card.getAttribute('data-name');
+            card.style.display = name.includes(term) ? '' : 'none';
+        });
+    }
+    
+    // Filter by status
+    function filterByStatus(status) {
+        document.querySelectorAll('.student-card').forEach(card => {
+            if (status === 'all') {
+                card.style.display = '';
+            } else {
+                const currentStatus = card.getAttribute('data-current-status');
+                const select = card.querySelector('select');
+                const actualStatus = select.value || currentStatus;
+                card.style.display = actualStatus === status ? '' : 'none';
+            }
+        });
+    }
+    
+    // Save draft to localStorage
+    function saveDraft() {
+        const formData = {};
+        document.querySelectorAll('select[name^="status_"]').forEach(select => {
+            if (select.value) {
+                formData[select.name] = select.value;
+            }
+        });
+        
+        localStorage.setItem('attendance_draft_{{ course.id }}_{{ date }}', JSON.stringify(formData));
+        showToast('Draft saved locally');
+    }
+    
+    // Show toast notification
+    function showToast(message) {
+        const toast = document.getElementById('successToast');
+        toast.querySelector('p').textContent = message;
+        toast.classList.remove('translate-y-20', 'opacity-0');
+        setTimeout(() => {
+            toast.classList.add('translate-y-20', 'opacity-0');
+        }, 3000);
+    }
+    
+    // Load draft on page load
+    window.addEventListener('load', () => {
+        const draft = localStorage.getItem('attendance_draft_{{ course.id }}_{{ date }}');
+        if (draft) {
+            const data = JSON.parse(draft);
+            Object.keys(data).forEach(name => {
+                const select = document.querySelector(`select[name="${name}"]`);
+                if (select && !select.value) {
+                    const studentId = name.replace('status_', '');
+                    setStudentStatus(studentId, data[name]);
+                }
+            });
+            showToast('Draft loaded');
+        }
+    });
+    
+    // Clear draft on successful submit
+    document.getElementById('attendanceForm').addEventListener('submit', (e) => {
+        localStorage.removeItem('attendance_draft_{{ course.id }}_{{ date }}');
+        showToast('Attendance saved successfully!');
+    });
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        // Ctrl/Cmd + S to save draft
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            e.preventDefault();
+            saveDraft();
+        }
+    });
+</script>
+{% endblock %}

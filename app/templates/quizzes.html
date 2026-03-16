@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+
+{% block title %}{{ course.name }} - Quizzes | EduMind AI{% endblock %}
+
+{% block page_title %}Course Quizzes{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb & Actions -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 animate-slide-up">
+  <nav aria-label="Breadcrumb" class="flex items-center gap-2 text-sm text-slate-400">
+    <a href="{{ url_for('courses.detail', course_id=course.id) }}" 
+       class="hover:text-white transition-colors flex items-center gap-1 group">
+      <i class="bi bi-arrow-left group-hover:-translate-x-1 transition-transform"></i>
+      <span>Back to Course</span>
+    </a>
+    <span class="text-slate-600">/</span>
+    <span class="text-white font-medium">Quizzes</span>
+  </nav>
+  
+  {% if current_user.role in ['lecturer', 'admin'] %}
+  <a href="{{ url_for('quizzes.create_quiz', course_id=course.id) }}" 
+     class="soft-button px-5 py-2.5 rounded-xl text-white font-medium inline-flex items-center gap-2 hover:scale-105 transition-transform">
+    <i class="bi bi-plus-circle-fill"></i>
+    Create Quiz
+  </a>
+  {% endif %}
+</div>
+
+<!-- Course Header with Stats -->
+<div class="glass-card rounded-3xl p-6 mb-8 animate-slide-up relative overflow-hidden">
+  <div class="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+  
+  <div class="relative z-10">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div>
+        <h2 class="text-2xl font-display font-bold text-white mb-1">{{ course.name }}</h2>
+        <p class="text-slate-400">{{ course.description or 'No description available' }}</p>
+      </div>
+      
+      <!-- Quick Stats -->
+      <div class="flex gap-4">
+        <div class="text-center px-4 py-2 rounded-xl bg-white/5">
+          <div class="text-2xl font-bold text-white">{{ quizzes|length }}</div>
+          <div class="text-xs text-slate-400 uppercase tracking-wider">Quizzes</div>
+        </div>
+        {% if current_user.role in ['lecturer', 'admin'] %}
+        <div class="text-center px-4 py-2 rounded-xl bg-white/5">
+          <div class="text-2xl font-bold text-emerald-400">
+            {{ quizzes|selectattr('is_published')|list|length }}
+          </div>
+          <div class="text-xs text-slate-400 uppercase tracking-wider">Published</div>
+        </div>
+        {% else %}
+        <div class="text-center px-4 py-2 rounded-xl bg-white/5">
+          <div class="text-2xl font-bold text-blue-400">
+            {{ completed_quiz_ids|length if completed_quiz_ids else 0 }}
+          </div>
+          <div class="text-xs text-slate-400 uppercase tracking-wider">Completed</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Quizzes Grid -->
+{% if quizzes %}
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  {% for quiz in quizzes %}
+  <article class="bento-item glass-card p-6 flex flex-col group animate-slide-up" 
+           style="animation-delay: {{ loop.index * 0.05 }}s">
+    
+    <!-- Header -->
+    <div class="flex items-start justify-between mb-4">
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 mb-1">
+          <h3 class="text-lg font-semibold text-white truncate">{{ quiz.title }}</h3>
+          {% if quiz.id in completed_quiz_ids and current_user.role == 'student' %}
+          <i class="bi bi-check-circle-fill text-emerald-400 flex-shrink-0" title="Completed"></i>
+          {% endif %}
+        </div>
+        <p class="text-slate-400 text-sm line-clamp-2">{{ quiz.description or 'No description provided' }}</p>
+      </div>
+      
+      <span class="ml-4 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium shrink-0 border
+        {% if quiz.is_published %}bg-emerald-500/10 text-emerald-400 border-emerald-500/30
+        {% else %}bg-slate-800 text-slate-400 border-slate-700{% endif %}">
+        {% if quiz.is_published %}
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-2 animate-pulse"></span>
+        Published
+        {% else %}
+        <span class="w-1.5 h-1.5 rounded-full bg-slate-500 mr-2"></span>
+        Draft
+        {% endif %}
+      </span>
+    </div>
+    
+    <!-- Meta Info Grid -->
+    <div class="grid grid-cols-3 gap-3 mb-6">
+      <div class="p-3 rounded-xl bg-white/5 text-center">
+        <i class="bi bi-question-circle text-blue-400 mb-1 block"></i>
+        <span class="text-lg font-bold text-white block">{{ quiz.question_count }}</span>
+        <span class="text-xs text-slate-500">Questions</span>
+      </div>
+      <div class="p-3 rounded-xl bg-white/5 text-center">
+        <i class="bi bi-clock text-purple-400 mb-1 block"></i>
+        <span class="text-lg font-bold text-white block">{{ quiz.time_limit }}</span>
+        <span class="text-xs text-slate-500">Minutes</span>
+      </div>
+      <div class="p-3 rounded-xl bg-white/5 text-center">
+        <i class="bi bi-bullseye text-amber-400 mb-1 block"></i>
+        <span class="text-lg font-bold text-white block">{{ quiz.passing_score }}%</span>
+        <span class="text-xs text-slate-500">Pass</span>
+      </div>
+    </div>
+    
+    <!-- Footer Actions -->
+    <div class="mt-auto pt-4 border-t border-white/10 flex items-center justify-between">
+      {% if current_user.role == 'student' %}
+        {% if quiz.id in completed_quiz_ids %}
+        <div class="flex items-center gap-2 text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-lg">
+          <i class="bi bi-check-circle-fill"></i>
+          <span class="font-medium text-sm">Completed</span>
+        </div>
+        <a href="{{ url_for('quizzes.take_quiz', quiz_id=quiz.id) }}" 
+           class="text-sm font-medium text-slate-300 hover:text-white flex items-center gap-1 group">
+          View Results
+          <i class="bi bi-arrow-right group-hover:translate-x-1 transition-transform"></i>
+        </a>
+        {% elif quiz.is_published %}
+        <span class="text-sm text-slate-500">
+          Due: {{ quiz.due_date.strftime('%b %d') if quiz.due_date else 'No deadline' }}
+        </span>
+        <a href="{{ url_for('quizzes.take_quiz', quiz_id=quiz.id) }}" 
+           class="soft-button px-4 py-2 rounded-xl text-white text-sm font-medium inline-flex items-center gap-2 hover:scale-105 transition-transform">
+          Start Quiz
+          <i class="bi bi-arrow-right"></i>
+        </a>
+        {% else %}
+        <span class="text-slate-500 text-sm flex items-center gap-2">
+          <i class="bi bi-lock"></i>
+          Not yet available
+        </span>
+        {% endif %}
+        
+      {% else %}
+      <!-- Lecturer/Admin Actions -->
+      <div class="flex items-center gap-2">
+        <a href="{{ url_for('quizzes.edit_quiz', quiz_id=quiz.id) }}" 
+           class="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all"
+           title="Edit Quiz">
+          <i class="bi bi-pencil-fill"></i>
+        </a>
+        <a href="{{ url_for('quizzes.edit_quiz', quiz_id=quiz.id) }}" 
+           class="p-2 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
+           title="View Statistics">
+          <i class="bi bi-bar-chart-fill"></i>
+        </a>
+        {% if not quiz.is_published %}
+        <button onclick="showPublishModal('{{ quiz.id }}', '{{ quiz.title }}')" 
+                class="p-2 rounded-lg text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 transition-all"
+                title="Publish Quiz">
+          <i class="bi bi-check-circle-fill"></i>
+        </button>
+        {% else %}
+        <button onclick="showUnpublishModal('{{ quiz.id }}', '{{ quiz.title }}')" 
+                class="p-2 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-all"
+                title="Unpublish Quiz">
+          <i class="bi bi-eye-slash-fill"></i>
+        </button>
+        {% endif %}
+        <button onclick="showDeleteModal('{{ quiz.id }}', '{{ quiz.title }}')" 
+                class="p-2 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all"
+                title="Delete Quiz">
+          <i class="bi bi-trash-fill"></i>
+        </button>
+      </div>
+      
+      <span class="text-xs text-slate-500">
+        {{ quiz.attempt_count|default(0) }} attempts
+      </span>
+      {% endif %}
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<!-- Empty State -->
+<div class="glass-card rounded-3xl p-12 text-center animate-fade-in">
+  <div class="w-20 h-20 mx-auto mb-6 rounded-2xl bg-slate-800/50 flex items-center justify-center">
+    <i class="bi bi-clipboard-data text-4xl text-slate-600"></i>
+  </div>
+  <h3 class="text-xl font-display font-semibold text-white mb-2">No quizzes yet</h3>
+  <p class="text-slate-400 mb-8 max-w-md mx-auto">
+    {% if current_user.role in ['lecturer', 'admin'] %}
+    Create your first quiz to assess student understanding and track progress.
+    {% else %}
+    Your instructor hasn't published any quizzes yet. Check back soon!
+    {% endif %}
+  </p>
+  {% if current_user.role in ['lecturer', 'admin'] %}
+  <a href="{{ url_for('quizzes.create_quiz', course_id=course.id) }}" 
+     class="soft-button px-6 py-3 rounded-xl text-white font-medium inline-flex items-center gap-2 hover:scale-105 transition-transform">
+    <i class="bi bi-plus-circle-fill"></i>
+    Create First Quiz
+  </a>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- Publish Confirmation Modal -->
+<div id="publishModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeModals()"></div>
+  <div class="glass-card rounded-2xl p-6 max-w-md w-full relative z-10 transform scale-95 opacity-0 transition-all duration-200" id="publishModalContent">
+    <div class="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-4">
+      <i class="bi bi-check-circle text-2xl text-emerald-400"></i>
+    </div>
+    <h3 class="text-lg font-semibold text-white text-center mb-2">Publish Quiz?</h3>
+    <p class="text-slate-400 text-center mb-6">Students will be able to see and take "<span id="publishQuizTitle" class="text-white font-medium"></span>" immediately.</p>
+    <div class="flex gap-3">
+      <button onclick="closeModals()" class="flex-1 py-2.5 rounded-xl border border-slate-600 text-slate-300 hover:bg-white/5 transition-colors">
+        Cancel
+      </button>
+      <form id="publishForm" method="POST" class="flex-1">
+        <button type="submit" class="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white font-medium transition-colors">
+          Publish Now
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeModals()"></div>
+  <div class="glass-card rounded-2xl p-6 max-w-md w-full relative z-10 transform scale-95 opacity-0 transition-all duration-200" id="deleteModalContent">
+    <div class="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+      <i class="bi bi-exclamation-triangle text-2xl text-red-400"></i>
+    </div>
+    <h3 class="text-lg font-semibold text-white text-center mb-2">Delete Quiz?</h3>
+    <p class="text-slate-400 text-center mb-6">This will permanently delete "<span id="deleteQuizTitle" class="text-white font-medium"></span>" and all student attempts. This action cannot be undone.</p>
+    <div class="flex gap-3">
+      <button onclick="closeModals()" class="flex-1 py-2.5 rounded-xl border border-slate-600 text-slate-300 hover:bg-white/5 transition-colors">
+        Cancel
+      </button>
+      <form id="deleteForm" method="POST" class="flex-1">
+        <button type="submit" class="w-full py-2.5 rounded-xl bg-red-500 hover:bg-red-400 text-white font-medium transition-colors">
+          Delete
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Modal Functions
+  function showPublishModal(quizId, quizTitle) {
+    const modal = document.getElementById('publishModal');
+    const content = document.getElementById('publishModalContent');
+    const form = document.getElementById('publishForm');
+    const title = document.getElementById('publishQuizTitle');
+    
+    form.action = `/quizzes/${quizId}/publish`;
+    title.textContent = quizTitle;
+    
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    setTimeout(() => {
+      content.classList.remove('scale-95', 'opacity-0');
+      content.classList.add('scale-100', 'opacity-100');
+    }, 10);
+  }
+  
+  function showDeleteModal(quizId, quizTitle) {
+    const modal = document.getElementById('deleteModal');
+    const content = document.getElementById('deleteModalContent');
+    const form = document.getElementById('deleteForm');
+    const title = document.getElementById('deleteQuizTitle');
+    
+    form.action = `/quizzes/${quizId}/delete`;
+    title.textContent = quizTitle;
+    
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    setTimeout(() => {
+      content.classList.remove('scale-95', 'opacity-0');
+      content.classList.add('scale-100', 'opacity-100');
+    }, 10);
+  }
+  
+  function closeModals() {
+    const modals = ['publishModal', 'deleteModal'];
+    modals.forEach(id => {
+      const modal = document.getElementById(id);
+      const content = document.getElementById(id + 'Content');
+      if (modal.classList.contains('flex')) {
+        content.classList.remove('scale-100', 'opacity-100');
+        content.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => {
+          modal.classList.add('hidden');
+          modal.classList.remove('flex');
+        }, 200);
+      }
+    });
+  }
+  
+  // Close modals on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModals();
+  });
+  
+  // Staggered animation for quiz cards
+  document.addEventListener('DOMContentLoaded', () => {
+    const cards = document.querySelectorAll('.bento-item');
+    cards.forEach((card, index) => {
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(20px)';
+      setTimeout(() => {
+        card.style.transition = 'all 0.5s ease-out';
+        card.style.opacity = '1';
+        card.style.transform = 'translateY(0)';
+      }, index * 100);
+    });
+  });
+</script>
+{% endblock %}

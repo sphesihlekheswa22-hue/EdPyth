@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}EduMind AI - Learning Reimagined{% endblock %}</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            200: '#bfdbfe',
+                            300: '#93c5fd',
+                            400: '#60a5fa',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a',
+                        },
+                        accent: {
+                            purple: '#8b5cf6',
+                            pink: '#ec4899',
+                            cyan: '#06b6d4',
+                            emerald: '#10b981',
+                        }
+                    },
+                    animation: {
+                        'gradient-x': 'gradient-x 15s ease infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'slide-up': 'slideUp 0.5s ease-out',
+                        'fade-in': 'fadeIn 0.3s ease-out',
+                    },
+                    keyframes: {
+                        'gradient-x': {
+                            '0%, 100%': { 'background-position': '0% 50%' },
+                            '50%': { 'background-position': '100% 50%' },
+                        },
+                        'float': {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-20px)' },
+                        },
+                        'slideUp': {
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                        'fadeIn': {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        /* Glassmorphism Utilities */
+        .glass {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .glass-strong {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .glass-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        
+        /* Neumorphism/Soft UI */
+        .soft-ui {
+            background: linear-gradient(145deg, #1e293b, #0f172a);
+            box-shadow: 
+                20px 20px 60px #0b1120,
+                -20px -20px 60px #27354f;
+        }
+        
+        .soft-button {
+            background: linear-gradient(145deg, #1e293b, #0f172a);
+            box-shadow: 
+                5px 5px 10px #0b1120,
+                -5px -5px 10px #27354f;
+            transition: all 0.3s ease;
+        }
+        
+        .soft-button:hover {
+            box-shadow: 
+                8px 8px 16px #0b1120,
+                -8px -8px 16px #27354f;
+            transform: translateY(-2px);
+        }
+        
+        .soft-button:active {
+            box-shadow: 
+                inset 5px 5px 10px #0b1120,
+                inset -5px -5px 10px #27354f;
+            transform: translateY(0);
+        }
+        
+        /* Animated Background */
+        .gradient-bg {
+            background: linear-gradient(-45deg, #0f172a, #1e1b4b, #312e81, #1e293b);
+            background-size: 400% 400%;
+            animation: gradient-x 15s ease infinite;
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #3b82f6;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #60a5fa;
+        }
+        
+        /* Smooth Transitions */
+        * {
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+        
+        /* Sidebar Hover Effects */
+        .nav-item-glow {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .nav-item-glow::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .nav-item-glow:hover::before {
+            left: 100%;
+        }
+        
+        /* Bento Grid */
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .bento-item {
+            border-radius: 24px;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .bento-item:hover {
+            transform: translateY(-8px) scale(1.02);
+        }
+        
+        /* Role Badges */
+        .badge-glow {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .badge-glow::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent);
+            transform: rotate(45deg);
+            transition: all 0.5s;
+            opacity: 0;
+        }
+        
+        .badge-glow:hover::after {
+            opacity: 1;
+            left: 100%;
+        }
+        
+        /* Floating Elements */
+        .float-element {
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        /* Loading Shimmer */
+        .shimmer {
+            background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0) 100%);
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        
+        /* Focus States */
+        .focus-ring:focus {
+            outline: none;
+            ring: 2px;
+            ring-color: #3b82f6;
+            ring-offset: 2px;
+            ring-offset-color: #0f172a;
+        }
+        
+        /* Toast Notifications */
+        .toast-enter {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        
+        .toast-enter-active {
+            transform: translateX(0);
+            opacity: 1;
+            transition: all 0.3s ease-out;
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased overflow-x-hidden">
+    {% if current_user.is_authenticated %}
+    <div class="min-h-screen gradient-bg">
+        <!-- Mobile Header -->
+        <div class="lg:hidden glass-strong fixed top-0 left-0 right-0 z-50 px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <button id="mobile-menu-btn" class="p-2 rounded-lg hover:bg-white/10 transition-colors">
+                    <i class="bi bi-list text-2xl"></i>
+                </button>
+                <span class="font-display font-bold text-xl bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                    EduMind AI
+                </span>
+            </div>
+            <div class="flex items-center gap-3">
+                <button class="p-2 rounded-lg hover:bg-white/10 relative">
+                    <i class="bi bi-bell text-xl"></i>
+                    <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                </button>
+                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-sm font-bold">
+                    {{ current_user.first_name[0] }}{{ current_user.last_name[0] }}
+                </div>
+            </div>
+        </div>
+
+        <div class="flex pt-16 lg:pt-0">
+            <!-- Sidebar -->
+            <aside id="sidebar" class="fixed lg:sticky top-0 left-0 z-40 w-72 h-screen glass-strong transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out lg:block border-r border-white/10">
+                <div class="h-full flex flex-col px-4 py-6">
+                    <!-- Logo -->
+                    <div class="mb-8 px-2 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                            <i class="bi bi-mortarboard-fill text-xl text-white"></i>
+                        </div>
+                        <div>
+                            <h1 class="font-display font-bold text-xl tracking-tight">EduMind AI</h1>
+                            <p class="text-xs text-slate-400">Learning Reimagined</p>
+                        </div>
+                    </div>
+
+                    <!-- Navigation -->
+                    <nav class="flex-1 space-y-2 overflow-y-auto">
+                        <div class="px-2 mb-4">
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Main</p>
+                            <a href="{{ url_for('main.dashboard') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group {{ 'bg-blue-500/20 text-blue-400 border border-blue-500/30' if request.endpoint == 'main.dashboard' else 'text-slate-300' }}">
+                                <i class="bi bi-speedometer2 text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="font-medium">Dashboard</span>
+                                {% if request.endpoint == 'main.dashboard' %}
+                                <div class="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.8)]"></div>
+                                {% endif %}
+                            </a>
+                        </div>
+
+                        {% if current_user.role == 'student' %}
+                        <div class="px-2 mb-4">
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Learning</p>
+                            <a href="{{ url_for('courses.index') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300">
+                                <i class="bi bi-book text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="font-medium">My Courses</span>
+                                <span class="ml-auto text-xs bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full">3</span>
+                            </a>
+                            <a href="{{ url_for('ai.chat') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300 mt-1">
+                                <i class="bi bi-chat-dots text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="font-medium">AI Tutor</span>
+                                <span class="ml-auto flex h-2 w-2">
+                                    <span class="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-emerald-400 opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                </span>
+                            </a>
+                            <a href="{{ url_for('analytics.student_analytics') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300 mt-1">
+                                <i class="bi bi-graph-up text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="font-medium">My Progress</span>
+                            </a>
+                        </div>
+
+                        <div class="px-2 mb-4">
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Career</p>
+                            <a href="{{ url_for('career.dashboard') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300">
+                                <i class="bi bi-briefcase text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="font-medium">Career Path</span>
+                            </a>
+                        </div>
+
+                        {% elif current_user.role == 'lecturer' %}
+                        <div class="px-2 mb-4">
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Teaching</p>
+                            <a href="{{ url_for('courses.index') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300">
+                                <i class="bi bi-book text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="font-medium">My Courses</span>
+                                <span class="ml-auto text-xs bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full">5</span>
+                            </a>
+                            <a href="{{ url_for('analytics.lecturer_analytics') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300 mt-1">
+                                <i class="bi bi-graph-up text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="font-medium">Analytics</span>
+                            </a>
+                        </div>
+
+                        {% elif current_user.role == 'admin' %}
+                        <div class="px-2 mb-4">
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Administration</p>
+                            <a href="{{ url_for('admin.users') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300">
+                                <i class="bi bi-people text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="font-medium">Users</span>
+                                <span class="ml-auto text-xs bg-pink-500/20 text-pink-300 px-2 py-0.5 rounded-full">1.2k</span>
+                            </a>
+                            <a href="{{ url_for('admin.courses') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300 mt-1">
+                                <i class="bi bi-book text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="font-medium">Courses</span>
+                            </a>
+                            <a href="{{ url_for('admin.enrollments') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300 mt-1">
+                                <i class="bi bi-person-check text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="font-medium">Enrollments</span>
+                            </a>
+                            <a href="{{ url_for('analytics.admin_analytics') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300 mt-1">
+                                <i class="bi bi-graph-up text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="font-medium">Analytics</span>
+                            </a>
+                        </div>
+
+                        {% elif current_user.role == 'career_advisor' %}
+                        <div class="px-2 mb-4">
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Advisory</p>
+                            <a href="{{ url_for('career.advisor_reviews') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300">
+                                <i class="bi bi-file-earmark-text text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="font-medium">CV Reviews</span>
+                                <span class="ml-auto text-xs bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full">12</span>
+                            </a>
+                        </div>
+                        {% endif %}
+
+                        <div class="px-2 mt-auto">
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Account</p>
+                            <a href="{{ url_for('auth.profile') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300">
+                                <i class="bi bi-person text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="font-medium">Profile</span>
+                            </a>
+                            <a href="{{ url_for('auth.logout') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-500/10 hover:text-red-400 transition-all group text-slate-300 mt-1">
+                                <i class="bi bi-box-arrow-right text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="font-medium">Logout</span>
+                            </a>
+                        </div>
+                    </nav>
+
+                    <!-- User Mini Profile -->
+                    <div class="mt-4 pt-4 border-t border-white/10">
+                        <div class="glass-card rounded-2xl p-4 flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-lg font-bold shadow-lg">
+                                {{ current_user.first_name[0] }}{{ current_user.last_name[0] }}
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="font-semibold text-sm truncate">{{ current_user.full_name }}</p>
+                                <span class="badge-glow inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
+                                    {% if current_user.role == 'student' %}bg-blue-500/20 text-blue-300 border border-blue-500/30
+                                    {% elif current_user.role == 'lecturer' %}bg-purple-500/20 text-purple-300 border border-purple-500/30
+                                    {% elif current_user.role == 'admin' %}bg-pink-500/20 text-pink-300 border border-pink-500/30
+                                    {% else %}bg-amber-500/20 text-amber-300 border border-amber-500/30{% endif %}">
+                                    {{ current_user.role.replace('_', ' ').title() }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Overlay for mobile -->
+            <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 hidden lg:hidden transition-opacity"></div>
+
+            <!-- Main Content -->
+            <main class="flex-1 min-h-screen p-4 lg:p-8 overflow-x-hidden">
+                <!-- Top Bar -->
+                <header class="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-slide-up">
+                    <div>
+                        <h2 class="font-display text-3xl font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
+                            {% block page_title %}Dashboard{% endblock %}
+                        </h2>
+                        <p class="text-slate-400 mt-1 flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            Welcome back, {{ current_user.first_name }}! Ready to learn?
+                        </p>
+                    </div>
+                    
+                    <div class="flex items-center gap-3">
+                        <!-- Search -->
+                        <div class="relative hidden sm:block group">
+                            <input type="text" placeholder="Search anything..." 
+                                class="w-64 pl-10 pr-4 py-2.5 rounded-xl glass border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm placeholder-slate-500 transition-all group-hover:border-white/20">
+                            <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-hover:text-blue-400 transition-colors"></i>
+                        </div>
+
+                        <!-- Notifications -->
+                        <button class="relative p-2.5 rounded-xl glass hover:bg-white/10 transition-all group">
+                            <i class="bi bi-bell text-xl text-slate-300 group-hover:text-white transition-colors"></i>
+                            <span class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
+                            <span class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
+                        </button>
+
+                        <!-- Theme Toggle -->
+                        <button onclick="toggleTheme()" class="p-2.5 rounded-xl glass hover:bg-white/10 transition-all">
+                            <i class="bi bi-moon-stars text-xl text-slate-300"></i>
+                        </button>
+                    </div>
+                </header>
+
+                <!-- Flash Messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <div class="space-y-3 mb-6">
+                            {% for category, message in messages %}
+                            <div class="glass-card rounded-xl p-4 flex items-center gap-3 animate-slide-up border-l-4 
+                                {% if category == 'success' %}border-emerald-500 bg-emerald-500/10
+                                {% elif category == 'error' %}border-red-500 bg-red-500/10
+                                {% elif category == 'warning' %}border-amber-500 bg-amber-500/10
+                                {% else %}border-blue-500 bg-blue-500/10{% endif %}">
+                                <i class="bi {% if category == 'success' %}bi-check-circle-fill text-emerald-400
+                                    {% elif category == 'error' %}bi-x-circle-fill text-red-400
+                                    {% elif category == 'warning' %}bi-exclamation-triangle-fill text-amber-400
+                                    {% else %}bi-info-circle-fill text-blue-400{% endif %} text-xl"></i>
+                                <p class="text-sm font-medium">{{ message }}</p>
+                                <button onclick="this.parentElement.remove()" class="ml-auto hover:bg-white/10 rounded-lg p-1 transition-colors">
+                                    <i class="bi bi-x text-lg"></i>
+                                </button>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+
+                <!-- Content Block -->
+                <div class="animate-fade-in">
+                    {% block content %}{% endblock %}
+                </div>
+
+                <!-- Footer -->
+                <footer class="mt-12 pt-8 border-t border-white/10 text-center">
+                    <p class="text-slate-500 text-sm">
+                        &copy; 2024 EduMind AI. All rights reserved. 
+                        <span class="mx-2">•</span>
+                        <a href="#" class="hover:text-blue-400 transition-colors">Privacy</a>
+                        <span class="mx-2">•</span>
+                        <a href="#" class="hover:text-blue-400 transition-colors">Terms</a>
+                    </p>
+                </footer>
+            </main>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- Not Authenticated - Landing Page -->
+    <div class="min-h-screen gradient-bg flex items-center justify-center p-4">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="fixed top-4 right-4 z-50 space-y-2 max-w-sm">
+                    {% for category, message in messages %}
+                    <div class="glass-card rounded-xl p-4 flex items-center gap-3 animate-slide-up border-l-4 
+                        {% if category == 'success' %}border-emerald-500
+                        {% elif category == 'error' %}border-red-500
+                        {% elif category == 'warning' %}border-amber-500
+                        {% else %}border-blue-500{% endif %}">
+                        <p class="text-sm font-medium">{{ message }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        {% block auth_content %}{% endblock %}
+    </div>
+    {% endif %}
+
+    <script>
+        // Mobile Menu Toggle
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        
+        function toggleSidebar() {
+            const isOpen = !sidebar.classList.contains('-translate-x-full');
+            if (isOpen) {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
+            } else {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+            }
+        }
+        
+        mobileMenuBtn?.addEventListener('click', toggleSidebar);
+        overlay?.addEventListener('click', toggleSidebar);
+
+        // Theme Toggle
+        function toggleTheme() {
+            const html = document.documentElement;
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                html.setAttribute('data-theme', 'light');
+            } else {
+                html.classList.add('dark');
+                html.setAttribute('data-theme', 'dark');
+            }
+        }
+
+        // Add smooth scroll behavior
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+
+        // Intersection Observer for animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('animate-slide-up');
+                    entry.target.classList.remove('opacity-0');
+                }
+            });
+        }, observerOptions);
+
+        // Observe all cards and sections
+        document.querySelectorAll('.bento-item, .glass-card').forEach(el => {
+            el.classList.add('opacity-0');
+            observer.observe(el);
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

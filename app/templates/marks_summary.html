@@ -1,0 +1,429 @@
+{% extends "base.html" %}
+
+{% block title %}My Marks Summary - EduMind AI{% endblock %}
+
+{% block page_title %}Academic Overview{% endblock %}
+
+{% block extra_css %}
+<style>
+    .gpa-ring {
+        transform: rotate(-90deg);
+        transform-origin: 50% 50%;
+    }
+    .gpa-circle {
+        transition: stroke-dashoffset 1.5s ease-out;
+    }
+    .course-card {
+        transition: all 0.3s ease;
+    }
+    .course-card:hover {
+        transform: translateY(-4px);
+    }
+    .trend-up { color: #34d399; }
+    .trend-down { color: #f87171; }
+    .trend-flat { color: #94a3b8; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- GPA Hero Section -->
+<div class="bento-item glass-card p-8 mb-8 relative overflow-hidden animate-slide-up">
+    <div class="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-blue-500/20 via-purple-500/20 to-pink-500/20 rounded-full blur-3xl -mr-48 -mt-48"></div>
+    
+    <div class="relative z-10 flex flex-col lg:flex-row items-center gap-8">
+        <!-- GPA Circle -->
+        <div class="relative w-40 h-40 flex-shrink-0">
+            <svg class="w-full h-full gpa-ring" viewBox="0 0 36 36">
+                <path class="text-white/10" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="2"/>
+                <path class="gpa-circle" id="gpaCircle"
+                      stroke-dasharray="0, 100"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" 
+                      fill="none" 
+                      stroke="url(#gpaGradient)" 
+                      stroke-width="3" 
+                      stroke-linecap="round"/>
+                <defs>
+                    <linearGradient id="gpaGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" style="stop-color:#3b82f6"/>
+                        <stop offset="100%" style="stop-color:#8b5cf6"/>
+                    </linearGradient>
+                </defs>
+            </svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center">
+                <span class="text-4xl font-display font-bold text-white" id="gpaDisplay">0.0</span>
+                <span class="text-xs text-slate-400 uppercase tracking-wider mt-1">GPA</span>
+            </div>
+        </div>
+
+        <!-- GPA Details -->
+        <div class="flex-1 text-center lg:text-left">
+            <h2 class="font-display text-3xl font-bold text-white mb-2">Academic Performance</h2>
+            <p class="text-slate-400 mb-6 max-w-xl">
+                {% if gpa >= 90 %}
+                    Outstanding! You're in the top percentile. Keep up the excellent work!
+                {% elif gpa >= 80 %}
+                    Great performance! You're consistently achieving high standards.
+                {% elif gpa >= 70 %}
+                    Good progress! Focus on areas below 80% to boost your GPA.
+                {% elif gpa >= 60 %}
+                    You're doing okay, but there's room for improvement. Check resources below.
+                {% else %}
+                    You need support. Connect with your instructors and use available resources.
+                {% endif %}
+            </p>
+            
+            <div class="flex flex-wrap items-center justify-center lg:justify-start gap-4">
+                <div class="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10">
+                    <i class="bi bi-journal-check text-emerald-400"></i>
+                    <span class="text-sm text-slate-300">{{ marks|length }} Assessments</span>
+                </div>
+                <div class="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10">
+                    <i class="bi bi-book text-blue-400"></i>
+                    <span class="text-sm text-slate-300">{{ marks|map(attribute='course')|unique|list|length }} Courses</span>
+                </div>
+                <div class="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10">
+                    <i class="bi bi-calendar-check text-purple-400"></i>
+                    <span class="text-sm text-slate-300">{{ current_semester }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="flex flex-col gap-3">
+            <a href="{{ url_for('ai.chat') }}" class="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all hover:-translate-y-0.5 flex items-center gap-2">
+                <i class="bi bi-robot"></i>
+                Get Study Help
+            </a>
+            <button onclick="downloadTranscript()" class="px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-all flex items-center gap-2">
+                <i class="bi bi-download"></i>
+                Download Transcript
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Course Breakdown -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
+    {% for course in courses %}
+    <div class="course-card bento-item glass-card p-6 animate-slide-up" style="animation-delay: {{ loop.index * 0.1 }}s">
+        <div class="flex items-start justify-between mb-4">
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-lg font-bold text-white">
+                {{ course.code[:2] }}
+            </div>
+            <span class="px-3 py-1 rounded-full text-sm font-bold 
+                {% if course.average >= 90 %}grade-a
+                {% elif course.average >= 80 %}grade-b
+                {% elif course.average >= 70 %}grade-c
+                {% elif course.average >= 60 %}grade-d
+                {% else %}grade-f{% endif %}">
+                {{ "%.0f"|format(course.average) }}%
+            </span>
+        </div>
+        
+        <h3 class="font-display font-semibold text-lg text-white mb-1">{{ course.name }}</h3>
+        <p class="text-xs text-slate-500 mb-4">{{ course.code }}</p>
+        
+        <div class="space-y-2 mb-4">
+            <div class="flex items-center justify-between text-sm">
+                <span class="text-slate-400">Assessments</span>
+                <span class="text-white font-medium">{{ course.marks|length }}</span>
+            </div>
+            <div class="flex items-center justify-between text-sm">
+                <span class="text-slate-400">Highest</span>
+                <span class="text-emerald-400 font-medium">{{ course.marks|map(attribute='percentage')|max|int }}%</span>
+            </div>
+            <div class="flex items-center justify-between text-sm">
+                <span class="text-slate-400">Lowest</span>
+                <span class="{% if course.marks|map(attribute='percentage')|min < 60 %}text-red-400{% else %}text-amber-400{% endif %} font-medium">
+                    {{ course.marks|map(attribute='percentage')|min|int }}%
+                </span>
+            </div>
+        </div>
+        
+        <a href="{{ url_for('marks.my_marks', course_id=course.id) }}" 
+           class="block w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-center text-sm text-slate-300 hover:text-white transition-all">
+            View Details
+        </a>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Detailed Marks Table -->
+<div class="bento-item glass-card overflow-hidden animate-slide-up" style="animation-delay: 0.4s">
+    <div class="p-6 border-b border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                <i class="bi bi-table text-blue-400"></i>
+            </div>
+            <div>
+                <h3 class="font-display font-semibold text-lg">All Assessments</h3>
+                <p class="text-xs text-slate-400">Complete academic record</p>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-2">
+            <select id="filterCourse" onchange="filterTable()" class="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white focus:outline-none focus:border-blue-500/50">
+                <option value="all">All Courses</option>
+                {% for course in courses %}
+                <option value="{{ course.id }}">{{ course.name }}</option>
+                {% endfor %}
+            </select>
+            <select id="filterGrade" onchange="filterTable()" class="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white focus:outline-none focus:border-blue-500/50">
+                <option value="all">All Grades</option>
+                <option value="A">A Grade</option>
+                <option value="B">B Grade</option>
+                <option value="C">C Grade</option>
+                <option value="D">D Grade</option>
+                <option value="F">F Grade</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="overflow-x-auto">
+        {% if marks %}
+        <table class="w-full" id="marksTable">
+            <thead>
+                <tr class="text-left border-b border-white/10 bg-white/5">
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Course</th>
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Assessment</th>
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider text-center">Type</th>
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider text-center">Score</th>
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider text-center">Grade</th>
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right">Date</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5">
+                {% for mark in marks|sort(attribute='created_at', reverse=true) %}
+                <tr class="hover:bg-white/5 transition-colors mark-row" 
+                    data-course="{{ mark.course.id }}" 
+                    data-grade="{{ mark.grade }}">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center text-xs font-bold text-blue-400">
+                                {{ mark.course.code[:2] }}
+                            </div>
+                            <span class="text-sm text-white">{{ mark.course.name }}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="text-sm text-slate-300">{{ mark.assessment_name }}</span>
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-white/5 text-slate-300 border border-white/10">
+                            {{ mark.assessment_type|title }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center justify-center gap-2">
+                            <div class="w-12 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                                <div class="h-full rounded-full {% if mark.percentage >= 80 %}bg-emerald-500{% elif mark.percentage >= 60 %}bg-amber-500{% else %}bg-red-500{% endif %}" 
+                                     style="width: {{ mark.percentage }}%"></div>
+                            </div>
+                            <span class="text-sm font-semibold text-white w-12 text-right">{{ mark.percentage }}%</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        <span class="inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold
+                            {% if mark.grade == 'A' %}grade-a
+                            {% elif mark.grade == 'B' %}grade-b
+                            {% elif mark.grade == 'C' %}grade-c
+                            {% elif mark.grade == 'D' %}grade-d
+                            {% else %}grade-f{% endif %}">
+                            {{ mark.grade }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        <span class="text-sm text-slate-500">{{ mark.created_at.strftime('%b %d, %Y') if mark.created_at else 'N/A' }}</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="text-center py-12">
+            <div class="w-16 h-16 rounded-full bg-slate-700/50 flex items-center justify-center mx-auto mb-4">
+                <i class="bi bi-clipboard-x text-3xl text-slate-500"></i>
+            </div>
+            <h4 class="font-display font-semibold text-lg text-white mb-2">No Marks Yet</h4>
+            <p class="text-slate-400 text-sm">Your academic record will appear here once assessments are graded.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Performance Insights -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+    <!-- Grade Distribution -->
+    <div class="bento-item glass-card p-6 animate-slide-up" style="animation-delay: 0.5s">
+        <h3 class="font-display font-semibold text-lg mb-6 flex items-center gap-2">
+            <i class="bi bi-pie-chart text-purple-400"></i>
+            Grade Distribution
+        </h3>
+        
+        {% set grade_counts = {'A': 0, 'B': 0, 'C': 0, 'D': 0, 'F': 0} %}
+        {% for mark in marks %}
+            {% if mark.grade == 'A' %}{% set _ = grade_counts.update({'A': grade_counts.A + 1}) %}
+            {% elif mark.grade == 'B' %}{% set _ = grade_counts.update({'B': grade_counts.B + 1}) %}
+            {% elif mark.grade == 'C' %}{% set _ = grade_counts.update({'C': grade_counts.C + 1}) %}
+            {% elif mark.grade == 'D' %}{% set _ = grade_counts.update({'D': grade_counts.D + 1}) %}
+            {% else %}{% set _ = grade_counts.update({'F': grade_counts.F + 1}) %}
+            {% endif %}
+        {% endfor %}
+        
+        <div class="space-y-4">
+            {% for grade in ['A', 'B', 'C', 'D', 'F'] %}
+            <div class="flex items-center gap-4">
+                <span class="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold
+                    {% if grade == 'A' %}grade-a{% elif grade == 'B' %}grade-b{% elif grade == 'C' %}grade-c{% elif grade == 'D' %}grade-d{% else %}grade-f{% endif %}">
+                    {{ grade }}
+                </span>
+                <div class="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                    <div class="h-full rounded-full {% if grade == 'A' %}bg-emerald-500{% elif grade == 'B' %}bg-blue-500{% elif grade == 'C' %}bg-amber-500{% elif grade == 'D' %}bg-orange-500{% else %}bg-red-500{% endif %}" 
+                         style="width: {{ (grade_counts[grade] / marks|length * 100) if marks else 0 }}%"></div>
+                </div>
+                <span class="w-8 text-right text-sm text-slate-400">{{ grade_counts[grade] }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Study Recommendations -->
+    <div class="bento-item glass-card p-6 animate-slide-up" style="animation-delay: 0.6s">
+        <h3 class="font-display font-semibold text-lg mb-6 flex items-center gap-2">
+            <i class="bi bi-lightbulb text-amber-400"></i>
+            Recommendations
+        </h3>
+        
+        <div class="space-y-4">
+            {% if gpa >= 90 %}
+            <div class="flex gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                <i class="bi bi-trophy text-emerald-400 text-xl"></i>
+                <div>
+                    <h4 class="font-semibold text-white mb-1">Maintain Excellence</h4>
+                    <p class="text-sm text-slate-400">You're performing exceptionally. Consider peer tutoring or advanced coursework.</p>
+                </div>
+            </div>
+            {% elif gpa >= 80 %}
+            <div class="flex gap-3 p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                <i class="bi bi-graph-up text-blue-400 text-xl"></i>
+                <div>
+                    <h4 class="font-semibold text-white mb-1">Push for Excellence</h4>
+                    <p class="text-sm text-slate-400">Review assessments below 85% to identify improvement areas.</p>
+                </div>
+            </div>
+            {% elif gpa >= 70 %}
+            <div class="flex gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                <i class="bi bi-book text-amber-400 text-xl"></i>
+                <div>
+                    <h4 class="font-semibold text-white mb-1">Strengthen Foundations</h4>
+                    <p class="text-sm text-slate-400">Use the AI Tutor to review concepts from lower-scoring assessments.</p>
+                </div>
+            </div>
+            {% else %}
+            <div class="flex gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+                <i class="bi bi-people text-red-400 text-xl"></i>
+                <div>
+                    <h4 class="font-semibold text-white mb-1">Seek Support</h4>
+                    <p class="text-sm text-slate-400">Connect with instructors and academic advisors immediately for help.</p>
+                </div>
+            </div>
+            {% endif %}
+            
+            <a href="{{ url_for('ai.chat') }}" class="flex items-center gap-3 p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-all group">
+                <div class="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <i class="bi bi-robot text-purple-400"></i>
+                </div>
+                <div class="flex-1">
+                    <h4 class="font-semibold text-white">AI Study Assistant</h4>
+                    <p class="text-sm text-slate-400">Get personalized help with difficult topics</p>
+                </div>
+                <i class="bi bi-chevron-right text-slate-500 group-hover:text-white transition-colors"></i>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Animate GPA on load
+    document.addEventListener('DOMContentLoaded', () => {
+        const gpaValue = {{ gpa }};
+        const circle = document.getElementById('gpaCircle');
+        const display = document.getElementById('gpaDisplay');
+        
+        // Animate circle
+        setTimeout(() => {
+            circle.style.strokeDasharray = `${gpaValue}, 100`;
+        }, 100);
+        
+        // Animate number
+        let current = 0;
+        const increment = gpaValue / 50;
+        const timer = setInterval(() => {
+            current += increment;
+            if (current >= gpaValue) {
+                current = gpaValue;
+                clearInterval(timer);
+            }
+            display.textContent = current.toFixed(1);
+        }, 30);
+    });
+
+    // Filter table
+    function filterTable() {
+        const courseFilter = document.getElementById('filterCourse').value;
+        const gradeFilter = document.getElementById('filterGrade').value;
+        const rows = document.querySelectorAll('.mark-row');
+        
+        rows.forEach(row => {
+            const course = row.dataset.course;
+            const grade = row.dataset.grade;
+            
+            const courseMatch = courseFilter === 'all' || course === courseFilter;
+            const gradeMatch = gradeFilter === 'all' || grade === gradeFilter;
+            
+            if (courseMatch && gradeMatch) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    // Download transcript
+    function downloadTranscript() {
+        showToast('Preparing transcript...', 'info');
+        setTimeout(() => {
+            showToast('Transcript downloaded!', 'success');
+        }, 1500);
+    }
+
+    // Toast notification
+    function showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        const colors = {
+            success: 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300',
+            error: 'bg-red-500/20 border-red-500/30 text-red-300',
+            info: 'bg-blue-500/20 border-blue-500/30 text-blue-300'
+        };
+        
+        toast.className = `fixed bottom-4 right-4 px-6 py-3 rounded-xl glass-card border ${colors[type]} transform translate-y-full opacity-0 transition-all duration-300 z-50 flex items-center gap-2`;
+        toast.innerHTML = `
+            <i class="bi ${type === 'success' ? 'bi-check-circle' : type === 'error' ? 'bi-x-circle' : 'bi-info-circle'}"></i>
+            <span class="font-medium">${message}</span>
+        `;
+        
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.classList.remove('translate-y-full', 'opacity-0');
+        }, 10);
+        
+        setTimeout(() => {
+            toast.classList.add('translate-y-full', 'opacity-0');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+
+{% block title %}{{ action }} Course - EduMind AI{% endblock %}
+
+{% block page_title %}{{ action }} Course{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto animate-slide-up">
+  <!-- Header Card -->
+  <div class="glass-card rounded-3xl p-8 mb-6 relative overflow-hidden">
+    <div class="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+    
+    <div class="relative z-10">
+      <div class="flex items-center gap-4 mb-2">
+        <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+          <i class="bi bi-book-open text-2xl text-white"></i>
+        </div>
+        <div>
+          <h2 class="text-2xl font-display font-bold text-white">{{ action }} Course</h2>
+          <p class="text-slate-400 text-sm">Fill in the details below to {{ action | lower }} the course</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Form Card -->
+  <div class="glass-card rounded-3xl p-8">
+    <form method="POST" id="courseForm" class="space-y-6" novalidate>
+      
+      <!-- Course Code & Name Row -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Course Code -->
+        <div class="space-y-2">
+          <label class="block text-sm font-semibold text-slate-200">
+            Course Code <span class="text-red-400">*</span>
+          </label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <i class="bi bi-hash text-slate-500"></i>
+            </div>
+            <input type="text" 
+                   name="code" 
+                   value="{{ course.code if course else '' }}" 
+                   placeholder="e.g., CS101"
+                   pattern="[A-Za-z0-9]+"
+                   required
+                   class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-900/50 border border-white/10 text-white placeholder-slate-500 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all"
+                   oninvalid="this.setCustomValidity('Please enter a valid course code (alphanumeric only).')"
+                   oninput="this.setCustomValidity('')">
+          </div>
+          <p class="text-xs text-slate-500">Alphanumeric characters only</p>
+        </div>
+
+        <!-- Course Name -->
+        <div class="md:col-span-2 space-y-2">
+          <label class="block text-sm font-semibold text-slate-200">
+            Course Name <span class="text-red-400">*</span>
+          </label>
+          <input type="text" 
+                 name="name" 
+                 value="{{ course.name if course else '' }}" 
+                 placeholder="Enter course name"
+                 maxlength="100"
+                 required
+                 class="w-full px-4 py-3 rounded-xl bg-slate-900/50 border border-white/10 text-white placeholder-slate-500 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all"
+                 oninvalid="this.setCustomValidity('Please enter a course name.')"
+                 oninput="this.setCustomValidity('')">
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div class="space-y-2">
+        <label class="block text-sm font-semibold text-slate-200">Description</label>
+        <textarea name="description" 
+                  rows="4" 
+                  placeholder="Enter course description..."
+                  maxlength="500"
+                  id="description"
+                  class="w-full px-4 py-3 rounded-xl bg-slate-900/50 border border-white/10 text-white placeholder-slate-500 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all resize-none">{{ course.description if course else '' }}</textarea>
+        <div class="flex justify-between text-xs">
+          <span class="text-slate-500">Brief overview of course content</span>
+          <span class="text-slate-400"><span id="charCount" class="text-blue-400 font-semibold">0</span>/500</span>
+        </div>
+      </div>
+
+      <!-- Credits, Semester, Year Row -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Credits -->
+        <div class="space-y-2">
+          <label class="block text-sm font-semibold text-slate-200">
+            Credits <span class="text-red-400">*</span>
+          </label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <i class="bi bi-star-fill text-slate-500 text-xs"></i>
+            </div>
+            <input type="number" 
+                   name="credits" 
+                   value="{{ course.credits if course else 3 }}" 
+                   min="1" 
+                   max="6" 
+                   required
+                   class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-900/50 border border-white/10 text-white focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all"
+                   oninvalid="this.setCustomValidity('Credits must be between 1-6.')"
+                   oninput="this.setCustomValidity('')">
+          </div>
+        </div>
+
+        <!-- Semester -->
+        <div class="space-y-2">
+          <label class="block text-sm font-semibold text-slate-200">
+            Semester <span class="text-red-400">*</span>
+          </label>
+          <div class="relative">
+            <select name="semester" 
+                    required
+                    class="w-full px-4 py-3 rounded-xl bg-slate-900/50 border border-white/10 text-white focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all appearance-none cursor-pointer">
+              <option value="" class="bg-slate-900">Select Semester</option>
+              <option value="Fall" {{ 'selected' if course and course.semester == 'Fall' else '' }} class="bg-slate-900">Fall</option>
+              <option value="Spring" {{ 'selected' if course and course.semester == 'Spring' else '' }} class="bg-slate-900">Spring</option>
+              <option value="Summer" {{ 'selected' if course and course.semester == 'Summer' else '' }} class="bg-slate-900">Summer</option>
+              <option value="Winter" {{ 'selected' if course and course.semester == 'Winter' else '' }} class="bg-slate-900">Winter</option>
+            </select>
+            <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+              <i class="bi bi-chevron-down text-slate-500"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Academic Year -->
+        <div class="space-y-2">
+          <label class="block text-sm font-semibold text-slate-200">
+            Academic Year <span class="text-red-400">*</span>
+          </label>
+          <input type="number" 
+                 name="year" 
+                 value="{{ course.year if course else 2026 }}" 
+                 min="2020" 
+                 max="2030" 
+                 required
+                 class="w-full px-4 py-3 rounded-xl bg-slate-900/50 border border-white/10 text-white focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all"
+                 oninvalid="this.setCustomValidity('Year must be between 2020-2030.')"
+                 oninput="this.setCustomValidity('')">
+        </div>
+      </div>
+
+      <!-- Status & Visibility Toggle (New Feature) -->
+      <div class="p-4 rounded-2xl bg-white/5 border border-white/10">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+              <i class="bi bi-eye-fill text-emerald-400"></i>
+            </div>
+            <div>
+              <p class="font-semibold text-white text-sm">Course Visibility</p>
+              <p class="text-xs text-slate-400">Make course visible to students immediately</p>
+            </div>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" name="is_published" value="true" {{ 'checked' if course and course.is_published else '' }} class="sr-only peer">
+            <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-500/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-white/10">
+        <a href="{{ url_for('courses.index') }}" 
+           class="w-full sm:w-auto px-6 py-3 rounded-xl border border-slate-600 text-slate-300 font-medium flex items-center justify-center gap-2 hover:bg-white/5 transition-all">
+          <i class="bi bi-arrow-left"></i>
+          Cancel
+        </a>
+        <button type="submit" 
+                id="submitBtn"
+                class="w-full sm:w-auto soft-button px-8 py-3 rounded-xl text-white font-medium flex items-center justify-center gap-2 hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
+          <i class="bi bi-check-lg"></i>
+          <span id="btnText">{{ action }} Course</span>
+          <span id="btnLoader" class="hidden">
+            <i class="bi bi-arrow-repeat animate-spin"></i>
+          </span>
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Help Card -->
+  <div class="mt-6 glass-card rounded-2xl p-6 flex items-start gap-4">
+    <div class="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+      <i class="bi bi-info-circle text-blue-400"></i>
+    </div>
+    <div>
+      <h4 class="font-semibold text-white mb-1">Tips for creating great courses</h4>
+      <ul class="text-sm text-slate-400 space-y-1 list-disc list-inside">
+        <li>Use clear, descriptive course codes (e.g., CS101, MATH201)</li>
+        <li>Write concise descriptions that highlight learning outcomes</li>
+        <li>Set appropriate credit hours based on course workload</li>
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Character counter for description
+  const textarea = document.getElementById('description');
+  const charCount = document.getElementById('charCount');
+  
+  function updateCharCount() {
+    const length = textarea.value.length;
+    charCount.textContent = length;
+    
+    // Visual feedback when approaching limit
+    if (length > 450) {
+      charCount.classList.remove('text-blue-400');
+      charCount.classList.add('text-amber-400');
+    } else if (length >= 500) {
+      charCount.classList.remove('text-amber-400');
+      charCount.classList.add('text-red-400');
+    } else {
+      charCount.classList.remove('text-amber-400', 'text-red-400');
+      charCount.classList.add('text-blue-400');
+    }
+  }
+  
+  textarea.addEventListener('input', updateCharCount);
+  // Initialize counter
+  updateCharCount();
+
+  // Form validation and submission
+  const form = document.getElementById('courseForm');
+  const submitBtn = document.getElementById('submitBtn');
+  const btnText = document.getElementById('btnText');
+  const btnLoader = document.getElementById('btnLoader');
+  
+  form.addEventListener('submit', function(event) {
+    if (!form.checkValidity()) {
+      event.preventDefault();
+      event.stopPropagation();
+      
+      // Shake animation on invalid fields
+      const invalidFields = form.querySelectorAll(':invalid');
+      invalidFields.forEach(field => {
+        field.classList.add('animate-pulse', 'border-red-500/50');
+        setTimeout(() => {
+          field.classList.remove('animate-pulse', 'border-red-500/50');
+        }, 2000);
+      });
+    } else {
+      // Show loading state
+      submitBtn.disabled = true;
+      btnText.classList.add('hidden');
+      btnLoader.classList.remove('hidden');
+    }
+    
+    form.classList.add('was-validated');
+  });
+
+  // Real-time validation feedback
+  form.querySelectorAll('input, select, textarea').forEach(field => {
+    field.addEventListener('blur', function() {
+      if (this.checkValidity()) {
+        this.classList.remove('border-white/10');
+        this.classList.add('border-emerald-500/50');
+      } else if (this.value !== '') {
+        this.classList.remove('border-white/10');
+        this.classList.add('border-red-500/50');
+      }
+    });
+    
+    field.addEventListener('focus', function() {
+      this.classList.remove('border-emerald-500/50', 'border-red-500/50');
+      this.classList.add('border-white/10');
+    });
+  });
+
+  // Auto-generate course code suggestion based on name
+  const nameInput = document.querySelector('input[name="name"]');
+  const codeInput = document.querySelector('input[name="code"]');
+  
+  nameInput.addEventListener('blur', function() {
+    if (codeInput.value === '' && this.value !== '') {
+      const words = this.value.split(' ');
+      const suggestion = words.map(w => w[0]).join('').toUpperCase().substring(0, 4) + '101';
+      codeInput.value = suggestion;
+      codeInput.classList.add('animate-pulse');
+      setTimeout(() => codeInput.classList.remove('animate-pulse'), 1000);
+    }
+  });
+</script>
+{% endblock %}

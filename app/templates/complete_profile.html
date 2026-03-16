@@ -1,0 +1,371 @@
+{% extends "base.html" %}
+
+{% block title %}Complete Profile - EduMind AI{% endblock %}
+
+{% block page_title %}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-3xl">
+        <!-- Progress Header -->
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 mb-4 shadow-2xl shadow-blue-500/30">
+                <i class="bi bi-person-circle text-4xl text-white"></i>
+            </div>
+            <h1 class="text-3xl font-bold text-white mb-2 font-display">Complete Your Profile</h1>
+            <p class="text-slate-400">Just a few more details to get you started</p>
+            
+            <!-- Progress Steps -->
+            <div class="flex items-center justify-center gap-4 mt-6">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white text-sm font-bold">
+                        <i class="bi bi-check-lg"></i>
+                    </div>
+                    <span class="text-sm text-emerald-400">Account</span>
+                </div>
+                <div class="w-12 h-0.5 bg-gradient-to-r from-emerald-500 to-blue-500"></div>
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-bold animate-pulse">
+                        2
+                    </div>
+                    <span class="text-sm text-blue-400 font-medium">Profile</span>
+                </div>
+                <div class="w-12 h-0.5 bg-slate-700"></div>
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-slate-400 text-sm font-bold">
+                        3
+                    </div>
+                    <span class="text-sm text-slate-500">Ready</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Role Badge -->
+        <div class="flex justify-center mb-6">
+            <span class="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border
+                {% if role == 'student' %}bg-blue-500/10 text-blue-400 border-blue-500/20
+                {% elif role == 'lecturer' %}bg-purple-500/10 text-purple-400 border-purple-500/20
+                {% elif role == 'admin' %}bg-pink-500/10 text-pink-400 border-pink-500/20
+                {% else %}bg-amber-500/10 text-amber-400 border-amber-500/20{% endif %}">
+                <i class="bi bi-{{ 'mortarboard' if role == 'student' else 'person-workspace' if role == 'lecturer' else 'shield' if role == 'admin' else 'briefcase' }}"></i>
+                {{ role|title }} Account
+            </span>
+        </div>
+
+        <!-- Main Form Card -->
+        <div class="glass-card rounded-3xl p-8 relative overflow-hidden">
+            <!-- Background Decoration -->
+            <div class="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-{{ 'blue' if role == 'student' else 'purple' if role == 'lecturer' else 'pink' }}-500/10 to-transparent rounded-full blur-3xl -mr-32 -mt-32"></div>
+            
+            <div class="relative z-10">
+                <form method="POST" id="profileForm" class="space-y-6">
+                    {{ form.hidden_tag() }}
+                    
+                    <!-- Role-Specific Icon Header -->
+                    <div class="flex items-center gap-4 p-4 rounded-2xl bg-white/5 mb-6">
+                        <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-{{ 'blue' if role == 'student' else 'purple' if role == 'lecturer' else 'pink' }}-500/20 to-{{ 'blue' if role == 'student' else 'purple' if role == 'lecturer' else 'pink' }}-600/10 flex items-center justify-center border border-{{ 'blue' if role == 'student' else 'purple' if role == 'lecturer' else 'pink' }}-500/20">
+                            <i class="bi bi-{{ 'mortarboard-fill' if role == 'student' else 'person-video3' if role == 'lecturer' else 'shield-fill' }} text-2xl text-{{ 'blue' if role == 'student' else 'purple' if role == 'lecturer' else 'pink' }}-400"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-white">{{ 'Student Information' if role == 'student' else 'Lecturer Details' if role == 'lecturer' else 'Administrator Setup' }}</h3>
+                            <p class="text-sm text-slate-400">Tell us more about yourself</p>
+                        </div>
+                    </div>
+
+                    {% if role == 'student' %}
+                    <!-- Student Fields -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-slate-300 flex items-center gap-2">
+                                <i class="bi bi-person-badge text-blue-400"></i>
+                                Student ID
+                            </label>
+                            <div class="relative">
+                                {{ form.student_id(class="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all pl-11") }}
+                                <i class="bi bi-hash absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                            </div>
+                            <p class="text-xs text-slate-500">Your unique student identification number</p>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-slate-300 flex items-center gap-2">
+                                <i class="bi bi-book text-blue-400"></i>
+                                Program/Major
+                            </label>
+                            <div class="relative">
+                                {{ form.program(class="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all pl-11") }}
+                                <i class="bi bi-mortarboard absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                            </div>
+                            <p class="text-xs text-slate-500">e.g., Computer Science, Engineering</p>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-slate-300 flex items-center gap-2">
+                                <i class="bi bi-calendar3 text-blue-400"></i>
+                                Year of Study
+                            </label>
+                            <div class="relative">
+                                {{ form.year_of_study(class="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none cursor-pointer") }}
+                                <i class="bi bi-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"></i>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-slate-300 flex items-center gap-2">
+                                <i class="bi bi-telephone text-blue-400"></i>
+                                Phone Number
+                            </label>
+                            <div class="relative">
+                                {{ form.phone(class="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all pl-11") }}
+                                <i class="bi bi-phone absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                            </div>
+                            <p class="text-xs text-slate-500">For important notifications</p>
+                        </div>
+                    </div>
+
+                    <!-- Additional Student Info -->
+                    <div class="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                        <div class="flex items-start gap-3">
+                            <i class="bi bi-info-circle-fill text-blue-400 mt-1"></i>
+                            <div>
+                                <p class="text-sm font-medium text-blue-300 mb-1">Why this matters</p>
+                                <p class="text-xs text-slate-400">Your student ID and program help us personalize your learning experience and connect you with relevant courses and career opportunities.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% elif role == 'lecturer' %}
+                    <!-- Lecturer Fields -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-slate-300 flex items-center gap-2">
+                                <i class="bi bi-person-badge text-purple-400"></i>
+                                Employee ID
+                            </label>
+                            <div class="relative">
+                                {{ form.employee_id(class="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all pl-11") }}
+                                <i class="bi bi-hash absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-slate-300 flex items-center gap-2">
+                                <i class="bi bi-building text-purple-400"></i>
+                                Department
+                            </label>
+                            <div class="relative">
+                                {{ form.department(class="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all pl-11") }}
+                                <i class="bi bi-briefcase absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-slate-300 flex items-center gap-2">
+                                <i class="bi bi-award text-purple-400"></i>
+                                Academic Title
+                            </label>
+                            <div class="relative">
+                                {{ form.title(class="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all pl-11") }}
+                                <i class="bi bi-mortarboard-fill absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                            </div>
+                            <p class="text-xs text-slate-500">e.g., Professor, Dr., Lecturer</p>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-slate-300 flex items-center gap-2">
+                                <i class="bi bi-stars text-purple-400"></i>
+                                Specialization
+                            </label>
+                            <div class="relative">
+                                {{ form.specialization(class="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all pl-11") }}
+                                <i class="bi bi-lightbulb absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                            </div>
+                            <p class="text-xs text-slate-500">Your area of expertise</p>
+                        </div>
+                    </div>
+
+                    <!-- Additional Lecturer Info -->
+                    <div class="p-4 rounded-xl bg-purple-500/10 border border-purple-500/20">
+                        <div class="flex items-start gap-3">
+                            <i class="bi bi-info-circle-fill text-purple-400 mt-1"></i>
+                            <div>
+                                <p class="text-sm font-medium text-purple-300 mb-1">Welcome to the faculty</p>
+                                <p class="text-xs text-slate-400">This information helps students identify your expertise and helps us match you with courses in your specialization area.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% elif role == 'career_advisor' %}
+                    <!-- Career Advisor Fields -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-slate-300 flex items-center gap-2">
+                                <i class="bi bi-person-badge text-amber-400"></i>
+                                Advisor ID
+                            </label>
+                            <div class="relative">
+                                {{ form.employee_id(class="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 transition-all pl-11") }}
+                                <i class="bi bi-hash absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-slate-300 flex items-center gap-2">
+                                <i class="bi bi-briefcase text-amber-400"></i>
+                                Department
+                            </label>
+                            <div class="relative">
+                                {{ form.department(class="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 transition-all pl-11") }}
+                                <i class="bi bi-building absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                        <div class="flex items-start gap-3">
+                            <i class="bi bi-info-circle-fill text-amber-400 mt-1"></i>
+                            <div>
+                                <p class="text-sm font-medium text-amber-300 mb-1">Helping students succeed</p>
+                                <p class="text-xs text-slate-400">Your profile information helps us connect you with students seeking career guidance in your areas of expertise.</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Common Fields (if any) -->
+                    <div class="space-y-2">
+                        <label class="block text-sm font-medium text-slate-300 flex items-center gap-2">
+                            <i class="bi bi-card-image text-slate-400"></i>
+                            Profile Photo (Optional)
+                        </label>
+                        <div class="flex items-center gap-4">
+                            <div class="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center border-2 border-dashed border-white/20 cursor-pointer hover:border-blue-500/50 transition-colors group">
+                                <i class="bi bi-camera text-2xl text-slate-500 group-hover:text-blue-400 transition-colors"></i>
+                            </div>
+                            <div class="flex-1">
+                                <button type="button" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition-all text-sm border border-white/10">
+                                    Upload Photo
+                                </button>
+                                <p class="text-xs text-slate-500 mt-2">JPG, PNG up to 2MB</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Terms Checkbox -->
+                    <div class="flex items-start gap-3 p-4 rounded-xl bg-white/5">
+                        <input type="checkbox" id="terms" class="mt-1 w-4 h-4 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500/20" required>
+                        <label for="terms" class="text-sm text-slate-400">
+                            I agree to the <a href="#" class="text-blue-400 hover:text-blue-300">Terms of Service</a> and <a href="#" class="text-blue-400 hover:text-blue-300">Privacy Policy</a>. I understand that my information will be used to provide educational services.
+                        </label>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex flex-col sm:flex-row gap-4 pt-4">
+                        <button type="button" onclick="history.back()" class="px-6 py-3 rounded-xl border border-white/10 text-slate-300 hover:text-white hover:border-white/20 transition-all text-sm font-medium order-2 sm:order-1">
+                            Back
+                        </button>
+                        
+                        {{ form.submit(class="flex-1 px-6 py-3 bg-gradient-to-r from-" + ('blue' if role == 'student' else 'purple' if role == 'lecturer' else 'pink' if role == 'admin' else 'amber') + "-500 to-" + ('blue' if role == 'student' else 'purple' if role == 'lecturer' else 'pink' if role == 'admin' else 'amber') + "-600 hover:from-" + ('blue' if role == 'student' else 'purple' if role == 'lecturer' else 'pink' if role == 'admin' else 'amber') + "-600 hover:to-" + ('blue' if role == 'student' else 'purple' if role == 'lecturer' else 'pink' if role == 'admin' else 'amber') + "-700 text-white font-medium rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-" + ('blue' if role == 'student' else 'purple' if role == 'lecturer' else 'pink' if role == 'admin' else 'amber') + "-500/25 order-1 sm:order-2") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Help Text -->
+        <p class="text-center text-sm text-slate-500 mt-6">
+            Need help? <a href="#" class="text-blue-400 hover:text-blue-300">Contact support</a> or <a href="#" class="text-blue-400 hover:text-blue-300">view FAQ</a>
+        </p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Custom select styling */
+    select {
+        background-image: none;
+    }
+    
+    /* Smooth transitions */
+    .glass-card {
+        animation: slideUp 0.5s ease-out;
+    }
+    
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    /* Input focus animations */
+    input:focus, select:focus {
+        transform: translateY(-1px);
+    }
+    
+    /* Floating animation for header icon */
+    .float-element {
+        animation: float 3s ease-in-out infinite;
+    }
+    
+    @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Form validation
+    document.getElementById('profileForm').addEventListener('submit', function(e) {
+        const terms = document.getElementById('terms');
+        if (!terms.checked) {
+            e.preventDefault();
+            alert('Please agree to the Terms of Service to continue.');
+            terms.focus();
+            return false;
+        }
+        
+        // Show loading state
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="bi bi-arrow-repeat animate-spin"></i> Saving...';
+        submitBtn.disabled = true;
+    });
+    
+    // Auto-capitalize student/employee ID
+    document.querySelectorAll('input[name="student_id"], input[name="employee_id"]').forEach(input => {
+        input.addEventListener('blur', function() {
+            this.value = this.value.toUpperCase();
+        });
+    });
+    
+    // Phone number formatting
+    const phoneInput = document.querySelector('input[name="phone"]');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 10) value = value.slice(0, 10);
+            e.target.value = value;
+        });
+    }
+    
+    // Real-time validation feedback
+    document.querySelectorAll('input, select').forEach(field => {
+        field.addEventListener('blur', function() {
+            if (this.value.trim()) {
+                this.classList.add('border-emerald-500/50');
+                this.classList.remove('border-red-500/50');
+            } else if (this.required) {
+                this.classList.add('border-red-500/50');
+                this.classList.remove('border-emerald-500/50');
+            }
+        });
+    });
+</script>
+{% endblock %}

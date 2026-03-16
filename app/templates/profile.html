@@ -1,0 +1,685 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - EduMind AI{% endblock %}
+
+{% block page_title %}My Profile{% endblock %}
+
+{% block extra_css %}
+<style>
+    .avatar-upload {
+        transition: all 0.3s ease;
+    }
+    .avatar-upload:hover {
+        transform: scale(1.05);
+    }
+    .avatar-upload:hover .avatar-overlay {
+        opacity: 1;
+    }
+    .stat-card {
+        transition: all 0.3s ease;
+    }
+    .stat-card:hover {
+        transform: translateY(-4px);
+    }
+    .tab-btn {
+        transition: all 0.2s ease;
+    }
+    .tab-btn.active {
+        background: rgba(59, 130, 246, 0.2);
+        border-color: rgba(59, 130, 246, 0.5);
+        color: #60a5fa;
+    }
+    .security-item {
+        transition: all 0.2s ease;
+    }
+    .security-item:hover {
+        background: rgba(255, 255, 255, 0.05);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Profile Header -->
+<div class="bento-item glass-card p-8 mb-8 relative overflow-hidden animate-slide-up">
+    <div class="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-blue-500/20 via-purple-500/20 to-pink-500/20 rounded-full blur-3xl -mr-48 -mt-48"></div>
+    
+    <div class="relative z-10 flex flex-col md:flex-row items-center md:items-start gap-6">
+        <!-- Avatar Section -->
+        <div class="relative">
+            <div class="avatar-upload w-28 h-28 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-4xl font-bold text-white shadow-lg shadow-blue-500/30 cursor-pointer relative overflow-hidden group">
+                {{ current_user.first_name[0] }}{{ current_user.last_name[0] }}
+                
+                <div class="avatar-overlay absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 transition-opacity">
+                    <i class="bi bi-camera text-2xl text-white"></i>
+                </div>
+            </div>
+            <div class="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-emerald-500 border-4 border-slate-900 flex items-center justify-center">
+                <i class="bi bi-check text-white text-xs"></i>
+            </div>
+        </div>
+
+        <!-- User Info -->
+        <div class="flex-1 text-center md:text-left">
+            <h2 class="font-display text-3xl font-bold text-white mb-2">{{ current_user.full_name }}</h2>
+            <div class="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-4">
+                <span class="px-3 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                    {{ current_user.role|title }}
+                </span>
+                <span class="text-slate-400 text-sm flex items-center gap-1">
+                    <i class="bi bi-envelope"></i>
+                    {{ current_user.email }}
+                </span>
+                <span class="text-slate-400 text-sm flex items-center gap-1">
+                    <i class="bi bi-calendar"></i>
+                    Joined {{ current_user.created_at.strftime('%b %Y') if current_user.created_at else 'Recently' }}
+                </span>
+            </div>
+            
+            <!-- Quick Stats -->
+            <div class="flex flex-wrap items-center justify-center md:justify-start gap-4">
+                {% if current_user.role == 'student' %}
+                <div class="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10">
+                    <i class="bi bi-book text-blue-400"></i>
+                    <span class="text-sm text-slate-300">{{ enrolled_courses|default(0) }} Courses</span>
+                </div>
+                <div class="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10">
+                    <i class="bi bi-award text-amber-400"></i>
+                    <span class="text-sm text-slate-300">GPA: {{ gpa|default('N/A') }}</span>
+                </div>
+                {% elif current_user.role == 'lecturer' %}
+                <div class="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10">
+                    <i class="bi bi-easel text-purple-400"></i>
+                    <span class="text-sm text-slate-300">{{ teaching_courses|default(0) }} Courses</span>
+                </div>
+                <div class="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10">
+                    <i class="bi bi-people text-emerald-400"></i>
+                    <span class="text-sm text-slate-300">{{ total_students|default(0) }} Students</span>
+                </div>
+                {% endif %}
+                <div class="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10">
+                    <i class="bi bi-clock-history text-slate-400"></i>
+                    <span class="text-sm text-slate-300">Last active {{ last_active|default('Today') }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex flex-col gap-2">
+            <button onclick="editProfile()" class="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all flex items-center gap-2">
+                <i class="bi bi-pencil"></i>
+                Edit Profile
+            </button>
+            <button onclick="changePassword()" class="px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 transition-all flex items-center gap-2">
+                <i class="bi bi-shield-lock"></i>
+                Security
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Tabs -->
+<div class="flex items-center gap-2 mb-6 animate-slide-up" style="animation-delay: 0.1s">
+    <button onclick="switchTab('overview')" class="tab-btn active px-4 py-2 rounded-lg text-sm font-medium transition-all" data-tab="overview">
+        <i class="bi bi-person mr-2"></i>Overview
+    </button>
+    <button onclick="switchTab('academic')" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition-all" data-tab="academic">
+        <i class="bi bi-mortarboard mr-2"></i>Academic Info
+    </button>
+    <button onclick="switchTab('security')" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition-all" data-tab="security">
+        <i class="bi bi-shield mr-2"></i>Security
+    </button>
+    <button onclick="switchTab('activity')" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition-all" data-tab="activity">
+        <i class="bi bi-activity mr-2"></i>Activity
+    </button>
+</div>
+
+<!-- Tab Content -->
+<div class="animate-slide-up" style="animation-delay: 0.2s">
+    <!-- Overview Tab -->
+    <div id="overviewTab" class="tab-content">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Personal Info -->
+            <div class="lg:col-span-2 space-y-6">
+                <div class="bento-item glass-card p-6">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                            <i class="bi bi-person-vcard text-blue-400"></i>
+                        </div>
+                        <h3 class="font-display font-semibold text-lg">Personal Information</h3>
+                    </div>
+
+                    <form method="POST" class="space-y-5">
+                        {{ form.hidden_tag() if form else '' }}
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium text-slate-300">First Name</label>
+                                <input type="text" value="{{ current_user.first_name }}" readonly
+                                       class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white cursor-not-allowed opacity-75">
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium text-slate-300">Last Name</label>
+                                <input type="text" value="{{ current_user.last_name }}" readonly
+                                       class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white cursor-not-allowed opacity-75">
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-slate-300">Email Address</label>
+                            <div class="relative">
+                                <input type="email" value="{{ current_user.email }}" readonly
+                                       class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white cursor-not-allowed opacity-75 pl-10">
+                                <i class="bi bi-envelope absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                            </div>
+                            <p class="text-xs text-slate-500">Contact admin to change email</p>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-slate-300">Bio</label>
+                            <textarea name="bio" rows="3"
+                                      class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white placeholder-slate-500 resize-none transition-all"
+                                      placeholder="Tell us about yourself...">{{ profile.bio if profile else '' }}</textarea>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-slate-300">Phone Number</label>
+                            <div class="relative">
+                                <input type="tel" name="phone" value="{{ profile.phone if profile else '' }}"
+                                       class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white pl-10 transition-all"
+                                       placeholder="+1 (555) 123-4567">
+                                <i class="bi bi-telephone absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3 pt-4 border-t border-white/10">
+                            <button type="submit" 
+                                    class="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all flex items-center gap-2">
+                                <i class="bi bi-check-lg"></i>
+                                Save Changes
+                            </button>
+                            <button type="reset" 
+                                    class="px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 transition-all">
+                                Reset
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="space-y-6">
+                <!-- Account Status -->
+                <div class="bento-item glass-card p-6">
+                    <h3 class="font-display font-semibold text-sm mb-4">Account Status</h3>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                            <div class="flex items-center gap-2">
+                                <i class="bi bi-shield-check text-emerald-400"></i>
+                                <span class="text-sm text-emerald-300">Verified</span>
+                            </div>
+                            <i class="bi bi-check-circle-fill text-emerald-400"></i>
+                        </div>
+                        <div class="flex items-center justify-between p-3 rounded-xl bg-white/5">
+                            <div class="flex items-center gap-2">
+                                <i class="bi bi-envelope-check text-blue-400"></i>
+                                <span class="text-sm text-slate-300">Email Confirmed</span>
+                            </div>
+                            <i class="bi bi-check-circle-fill text-emerald-400"></i>
+                        </div>
+                        <div class="flex items-center justify-between p-3 rounded-xl bg-white/5">
+                            <div class="flex items-center gap-2">
+                                <i class="bi bi-clock text-slate-400"></i>
+                                <span class="text-sm text-slate-300">Member Since</span>
+                            </div>
+                            <span class="text-sm text-white">{{ current_user.created_at.strftime('%b %Y') if current_user.created_at else '2024' }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Connected Accounts -->
+                <div class="bento-item glass-card p-6">
+                    <h3 class="font-display font-semibold text-sm mb-4">Connected Accounts</h3>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between p-3 rounded-xl bg-white/5">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                                    <i class="bi bi-google text-blue-400"></i>
+                                </div>
+                                <span class="text-sm text-slate-300">Google</span>
+                            </div>
+                            <span class="text-xs text-slate-500">Not connected</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 rounded-xl bg-white/5">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-slate-700 flex items-center justify-center">
+                                    <i class="bi bi-microsoft text-slate-400"></i>
+                                </div>
+                                <span class="text-sm text-slate-300">Microsoft</span>
+                            </div>
+                            <span class="text-xs text-slate-500">Not connected</span>
+                        </div>
+                    </div>
+                    <button class="w-full mt-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-sm text-slate-300 transition-all">
+                        + Connect Account
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Academic Info Tab -->
+    <div id="academicTab" class="tab-content hidden">
+        <div class="bento-item glass-card p-6">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                    <i class="bi bi-mortarboard text-amber-400"></i>
+                </div>
+                <h3 class="font-display font-semibold text-lg">Academic Information</h3>
+            </div>
+
+            {% if current_user.role == 'student' %}
+            <form method="POST" class="space-y-5">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-slate-300">Student ID</label>
+                        <div class="relative">
+                            <input type="text" name="student_id" value="{{ profile.student_id if profile else '' }}"
+                                   class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white pl-10 transition-all"
+                                   placeholder="STU-2024-001">
+                            <i class="bi bi-person-badge absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-slate-300">Program/Major</label>
+                        <input type="text" name="program" value="{{ profile.program if profile else '' }}"
+                               class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white transition-all"
+                               placeholder="Computer Science">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-slate-300">Year of Study</label>
+                        <select name="year_of_study" 
+                                class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white">
+                            <option value="1" {% if profile and profile.year_of_study == 1 %}selected{% endif %}>1st Year</option>
+                            <option value="2" {% if profile and profile.year_of_study == 2 %}selected{% endif %}>2nd Year</option>
+                            <option value="3" {% if profile and profile.year_of_study == 3 %}selected{% endif %}>3rd Year</option>
+                            <option value="4" {% if profile and profile.year_of_study == 4 %}selected{% endif %}>4th Year</option>
+                            <option value="5" {% if profile and profile.year_of_study == 5 %}selected{% endif %}>5th Year+</option>
+                        </select>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-slate-300">Expected Graduation</label>
+                        <input type="month" name="graduation_date" 
+                               value="{{ profile.graduation_date.strftime('%Y-%m') if profile and profile.graduation_date else '' }}"
+                               class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white transition-all">
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-white/10">
+                    <button type="submit" 
+                            class="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all flex items-center gap-2">
+                        <i class="bi bi-check-lg"></i>
+                        Save Academic Info
+                    </button>
+                </div>
+            </form>
+
+            {% elif current_user.role == 'lecturer' %}
+            <form method="POST" class="space-y-5">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-slate-300">Employee ID</label>
+                        <div class="relative">
+                            <input type="text" name="employee_id" value="{{ profile.employee_id if profile else '' }}"
+                                   class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white pl-10 transition-all"
+                                   placeholder="EMP-2024-001">
+                            <i class="bi bi-briefcase absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-slate-300">Department</label>
+                        <input type="text" name="department" value="{{ profile.department if profile else '' }}"
+                               class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white transition-all"
+                               placeholder="Computer Science">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-slate-300">Academic Title</label>
+                        <select name="title" 
+                                class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white">
+                            <option value="">Select Title</option>
+                            <option value="Dr." {% if profile and profile.title == 'Dr.' %}selected{% endif %}>Dr.</option>
+                            <option value="Prof." {% if profile and profile.title == 'Prof.' %}selected{% endif %}>Prof.</option>
+                            <option value="Assoc. Prof." {% if profile and profile.title == 'Assoc. Prof.' %}selected{% endif %}>Assoc. Prof.</option>
+                            <option value="Asst. Prof." {% if profile and profile.title == 'Asst. Prof.' %}selected{% endif %}>Asst. Prof.</option>
+                            <option value="Mr." {% if profile and profile.title == 'Mr.' %}selected{% endif %}>Mr.</option>
+                            <option value="Ms." {% if profile and profile.title == 'Ms.' %}selected{% endif %}>Ms.</option>
+                        </select>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-slate-300">Specialization</label>
+                        <input type="text" name="specialization" value="{{ profile.specialization if profile else '' }}"
+                               class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white transition-all"
+                               placeholder="Machine Learning, AI">
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-slate-300">Office Hours</label>
+                    <input type="text" name="office_hours" value="{{ profile.office_hours if profile else '' }}"
+                           class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white transition-all"
+                           placeholder="Mon/Wed 2:00 PM - 4:00 PM">
+                </div>
+
+                <div class="pt-4 border-t border-white/10">
+                    <button type="submit" 
+                            class="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all flex items-center gap-2">
+                        <i class="bi bi-check-lg"></i>
+                        Save Professional Info
+                    </button>
+                </div>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Security Tab -->
+    <div id="securityTab" class="tab-content hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Change Password -->
+            <div class="bento-item glass-card p-6">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center">
+                        <i class="bi bi-key text-red-400"></i>
+                    </div>
+                    <h3 class="font-display font-semibold text-lg">Change Password</h3>
+                </div>
+
+                <form id="passwordForm" class="space-y-4">
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-slate-300">Current Password</label>
+                        <div class="relative">
+                            <input type="password" id="currentPassword" required
+                                   class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white pl-10 pr-10 transition-all"
+                                   placeholder="••••••••">
+                            <i class="bi bi-lock absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                            <button type="button" onclick="togglePassword('currentPassword')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white">
+                                <i class="bi bi-eye-slash"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-slate-300">New Password</label>
+                        <div class="relative">
+                            <input type="password" id="newPassword" required
+                                   class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white pl-10 pr-10 transition-all"
+                                   placeholder="••••••••">
+                            <i class="bi bi-lock absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                            <button type="button" onclick="togglePassword('newPassword')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white">
+                                <i class="bi bi-eye-slash"></i>
+                            </button>
+                        </div>
+                        <div class="flex gap-1 mt-2">
+                            <div class="h-1 flex-1 rounded-full bg-white/10 password-strength" id="strength1"></div>
+                            <div class="h-1 flex-1 rounded-full bg-white/10 password-strength" id="strength2"></div>
+                            <div class="h-1 flex-1 rounded-full bg-white/10 password-strength" id="strength3"></div>
+                            <div class="h-1 flex-1 rounded-full bg-white/10 password-strength" id="strength4"></div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-slate-300">Confirm New Password</label>
+                        <div class="relative">
+                            <input type="password" id="confirmPassword" required
+                                   class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white pl-10 transition-all"
+                                   placeholder="••••••••">
+                            <i class="bi bi-lock-fill absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                        </div>
+                    </div>
+
+                    <button type="submit" 
+                            class="w-full py-3 rounded-xl bg-gradient-to-r from-red-500 to-pink-600 text-white font-semibold shadow-lg shadow-red-500/25 hover:shadow-red-500/40 transition-all flex items-center justify-center gap-2">
+                        <i class="bi bi-shield-lock"></i>
+                        Update Password
+                    </button>
+                </form>
+            </div>
+
+            <!-- Security Settings -->
+            <div class="bento-item glass-card p-6">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                        <i class="bi bi-shield-check text-emerald-400"></i>
+                    </div>
+                    <h3 class="font-display font-semibold text-lg">Security Settings</h3>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="security-item flex items-center justify-between p-4 rounded-xl bg-white/5 cursor-pointer" onclick="toggleSetting(this)">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                                <i class="bi bi-phone text-blue-400"></i>
+                            </div>
+                            <div>
+                                <p class="font-medium text-white">Two-Factor Authentication</p>
+                                <p class="text-xs text-slate-400">Add extra security to your account</p>
+                            </div>
+                        </div>
+                        <div class="w-12 h-6 rounded-full bg-slate-700 relative transition-colors toggle-switch">
+                            <div class="w-5 h-5 rounded-full bg-white absolute top-0.5 left-0.5 transition-transform"></div>
+                        </div>
+                    </div>
+
+                    <div class="security-item flex items-center justify-between p-4 rounded-xl bg-white/5 cursor-pointer" onclick="toggleSetting(this)">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                                <i class="bi bi-envelope text-purple-400"></i>
+                            </div>
+                            <div>
+                                <p class="font-medium text-white">Email Notifications</p>
+                                <p class="text-xs text-slate-400">Get alerts for important updates</p>
+                            </div>
+                        </div>
+                        <div class="w-12 h-6 rounded-full bg-blue-500 relative transition-colors toggle-switch">
+                            <div class="w-5 h-5 rounded-full bg-white absolute top-0.5 left-0.5 transition-transform translate-x-6"></div>
+                        </div>
+                    </div>
+
+                    <div class="security-item flex items-center justify-between p-4 rounded-xl bg-white/5 cursor-pointer" onclick="toggleSetting(this)">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                                <i class="bi bi-eye-slash text-amber-400"></i>
+                            </div>
+                            <div>
+                                <p class="font-medium text-white">Profile Visibility</p>
+                                <p class="text-xs text-slate-400">Make profile visible to other students</p>
+                            </div>
+                        </div>
+                        <div class="w-12 h-6 rounded-full bg-slate-700 relative transition-colors toggle-switch">
+                            <div class="w-5 h-5 rounded-full bg-white absolute top-0.5 left-0.5 transition-transform"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 pt-6 border-t border-white/10">
+                    <button onclick="showLoginHistory()" 
+                            class="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 transition-all flex items-center justify-center gap-2">
+                        <i class="bi bi-clock-history"></i>
+                        View Login History
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Activity Tab -->
+    <div id="activityTab" class="tab-content hidden">
+        <div class="bento-item glass-card p-6">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                    <i class="bi bi-activity text-blue-400"></i>
+                </div>
+                <h3 class="font-display font-semibold text-lg">Recent Activity</h3>
+            </div>
+
+            <div class="space-y-4">
+                {% for activity in recent_activity|default([]) %}
+                <div class="flex items-start gap-4 p-4 rounded-xl bg-white/5">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white">
+                        <i class="bi {{ activity.icon|default('bi-circle') }}"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="font-medium text-white">{{ activity.description|default('Activity recorded') }}</p>
+                        <p class="text-xs text-slate-500">{{ activity.time|default('2 hours ago') }}</p>
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center py-8">
+                    <i class="bi bi-inbox text-4xl text-slate-600 mb-3"></i>
+                    <p class="text-slate-500">No recent activity to display</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Tab switching
+    function switchTab(tabName) {
+        // Hide all tabs
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.classList.add('hidden');
+        });
+        
+        // Show selected tab
+        document.getElementById(tabName + 'Tab').classList.remove('hidden');
+        
+        // Update button states
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.tab === tabName) {
+                btn.classList.add('active');
+                btn.classList.remove('text-slate-400');
+            } else {
+                btn.classList.add('text-slate-400');
+            }
+        });
+    }
+
+    // Toggle password visibility
+    function togglePassword(fieldId) {
+        const input = document.getElementById(fieldId);
+        const icon = event.target.closest('button').querySelector('i');
+        
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.remove('bi-eye-slash');
+            icon.classList.add('bi-eye');
+        } else {
+            input.type = 'password';
+            icon.classList.remove('bi-eye');
+            icon.classList.add('bi-eye-slash');
+        }
+    }
+
+    // Password strength indicator
+    document.getElementById('newPassword')?.addEventListener('input', function(e) {
+        const password = e.target.value;
+        const bars = document.querySelectorAll('.password-strength');
+        
+        let strength = 0;
+        if (password.length >= 8) strength++;
+        if (password.match(/[a-z]/) && password.match(/[A-Z]/)) strength++;
+        if (password.match(/\d/)) strength++;
+        if (password.match(/[^a-zA-Z\d]/)) strength++;
+        
+        bars.forEach((bar, index) => {
+            if (index < strength) {
+                bar.className = 'h-1 flex-1 rounded-full password-strength ' + 
+                    (strength <= 2 ? 'bg-amber-500' : strength === 3 ? 'bg-blue-500' : 'bg-emerald-500');
+            } else {
+                bar.className = 'h-1 flex-1 rounded-full bg-white/10 password-strength';
+            }
+        });
+    });
+
+    // Toggle settings
+    function toggleSetting(element) {
+        const switchEl = element.querySelector('.toggle-switch');
+        const knob = switchEl.querySelector('div');
+        
+        if (switchEl.classList.contains('bg-blue-500')) {
+            switchEl.classList.remove('bg-blue-500');
+            switchEl.classList.add('bg-slate-700');
+            knob.classList.remove('translate-x-6');
+        } else {
+            switchEl.classList.remove('bg-slate-700');
+            switchEl.classList.add('bg-blue-500');
+            knob.classList.add('translate-x-6');
+        }
+    }
+
+    // Form submissions
+    document.getElementById('passwordForm')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const newPass = document.getElementById('newPassword').value;
+        const confirmPass = document.getElementById('confirmPassword').value;
+        
+        if (newPass !== confirmPass) {
+            showToast('Passwords do not match!', 'error');
+            return;
+        }
+        
+        showToast('Password updated successfully!', 'success');
+    });
+
+    // Toast notification
+    function showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        const colors = {
+            success: 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300',
+            error: 'bg-red-500/20 border-red-500/30 text-red-300',
+            info: 'bg-blue-500/20 border-blue-500/30 text-blue-300'
+        };
+        
+        toast.className = `fixed bottom-4 right-4 px-6 py-3 rounded-xl glass-card border ${colors[type]} transform translate-y-full opacity-0 transition-all duration-300 z-50 flex items-center gap-2`;
+        toast.innerHTML = `
+            <i class="bi ${type === 'success' ? 'bi-check-circle' : type === 'error' ? 'bi-x-circle' : 'bi-info-circle'}"></i>
+            <span class="font-medium">${message}</span>
+        `;
+        
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.classList.remove('translate-y-full', 'opacity-0');
+        }, 10);
+        
+        setTimeout(() => {
+            toast.classList.add('translate-y-full', 'opacity-0');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    function editProfile() {
+        switchTab('overview');
+        document.querySelector('input[name="bio"]')?.focus();
+    }
+
+    function changePassword() {
+        switchTab('security');
+        document.getElementById('currentPassword')?.focus();
+    }
+
+    function showLoginHistory() {
+        showToast('Login history feature coming soon!', 'info');
+    }
+</script>
+{% endblock %}
