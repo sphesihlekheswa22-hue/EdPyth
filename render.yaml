@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: edumind-ai
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn wsgi:application --bind 0.0.0.0:$PORT
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: edumind_db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: SESSION_SECRET_KEY
+        generateValue: true
+
+databases:
+  - name: edumind_db
+    plan: free
+    databaseName: edumind_db
+    user: edumind_user
