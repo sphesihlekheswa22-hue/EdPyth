@@ -1,0 +1,79 @@
+digraph ERD_CORE {
+  graph [
+    rankdir=LR,
+    splines=ortho,
+    nodesep=0.6,
+    ranksep=1.0,
+    pad=0.2,
+    bgcolor="white",
+    fontname="Arial"
+  ];
+  node  [shape=box, style="rounded", fontsize=10, fontname="Arial"];
+  edge  [arrowhead=none, color="#4b5563", penwidth=1.2, fontname="Arial", fontsize=9];
+
+  // Core tables only (LMS)
+  users; students; lecturers;
+  courses; modules;
+  lecturer_modules; enrollments;
+  course_materials;
+  quizzes; quiz_questions; quiz_results;
+  assignments; assignment_attachments; assignment_submissions;
+  attendances; marks;
+
+  // Grouping to reduce crossings
+  subgraph cluster_identity {
+    label="Identity";
+    color="#e5e7eb";
+    users; students; lecturers;
+  }
+
+  subgraph cluster_academics {
+    label="Academics";
+    color="#e5e7eb";
+    courses; modules; lecturer_modules; enrollments;
+  }
+
+  subgraph cluster_content {
+    label="Content & Assessment";
+    color="#e5e7eb";
+    course_materials;
+    quizzes; quiz_questions; quiz_results;
+    assignments; assignment_attachments; assignment_submissions;
+    attendances; marks;
+  }
+
+  // Relationships (foreign keys)
+  students  -> users     [label="user_id"];
+  lecturers -> users     [label="user_id"];
+
+  modules   -> courses   [label="course_id"];
+  lecturer_modules -> lecturers [label="lecturer_id"];
+  lecturer_modules -> modules   [label="module_id"];
+
+  enrollments -> students [label="student_id"];
+  enrollments -> courses  [label="course_id"];
+
+  course_materials -> modules [label="module_id"];
+  course_materials -> users   [label="uploaded_by"];
+
+  quizzes -> modules [label="module_id"];
+  quizzes -> users   [label="created_by"];
+  quiz_questions -> quizzes [label="quiz_id"];
+  quiz_results   -> quizzes [label="quiz_id"];
+  quiz_results   -> students [label="student_id"];
+
+  assignments -> modules [label="module_id"];
+  assignment_attachments  -> assignments [label="assignment_id"];
+  assignment_submissions  -> assignments [label="assignment_id"];
+  assignment_submissions  -> students    [label="student_id"];
+  assignment_submissions  -> users       [label="graded_by"];
+
+  attendances -> modules [label="module_id"];
+  attendances -> students [label="student_id"];
+  attendances -> users    [label="recorded_by"];
+
+  marks -> modules  [label="module_id"];
+  marks -> students [label="student_id"];
+  marks -> users    [label="recorded_by"];
+}
+

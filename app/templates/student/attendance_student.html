@@ -1,0 +1,501 @@
+{% extends "base.html" %}
+
+{% block title %}My Attendance - EduMind AI{% endblock %}
+
+{% block page_title %}{{ course.name }} - My Attendance{% endblock %}
+
+{% block content %}
+<!-- Course Header -->
+<div class="glass-card rounded-2xl p-6 mb-6 relative overflow-hidden">
+    <div class="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+    
+    <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-2xl shadow-lg shadow-blue-500/30">
+                {{ course.name[0] }}
+            </div>
+            <div>
+                <h2 class="text-2xl font-bold text-white">{{ course.name }}</h2>
+                <p class="text-slate-400 flex items-center gap-2">
+                    <span class="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 text-xs font-mono">{{ course.code }}</span>
+                    <span>•</span>
+                    <span>{{ course.credits }} Credits</span>
+                </p>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-3">
+            <a href="{{ url_for('courses.detail', course_id=course.id) }}" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl transition-all border border-white/10 flex items-center gap-2">
+                <i class="bi bi-book"></i>
+                Course Page
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Attendance Stats Cards -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <!-- Overall Rate -->
+    <div class="glass-card rounded-2xl p-5 relative overflow-hidden group hover:scale-[1.02] transition-all">
+        <div class="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl -mr-16 -mt-16"></div>
+        <div class="relative z-10">
+            <div class="flex items-center justify-between mb-3">
+                <div class="p-2 bg-emerald-500/20 rounded-lg">
+                    <i class="bi bi-calendar-check-fill text-emerald-400 text-xl"></i>
+                </div>
+                {% set attendance_rate = (records|selectattr("status", "equalto", "present")|list|length / records|length * 100)|default(0) %}
+                {% if attendance_rate >= 90 %}
+                <span class="text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-full flex items-center gap-1">
+                    <i class="bi bi-fire"></i> Excellent!
+                </span>
+                {% elif attendance_rate >= 75 %}
+                <span class="text-xs font-medium text-blue-400 bg-blue-500/10 px-2 py-1 rounded-full">Good</span>
+                {% else %}
+                <span class="text-xs font-medium text-amber-400 bg-amber-500/10 px-2 py-1 rounded-full">At Risk</span>
+                {% endif %}
+            </div>
+            
+            <div class="flex items-baseline gap-1 mb-1">
+                <h3 class="text-3xl font-bold text-white">{{ attendance_rate|round(1) }}%</h3>
+            </div>
+            <p class="text-sm text-slate-400">Attendance Rate</p>
+            
+            <div class="mt-3 h-2 bg-slate-800 rounded-full overflow-hidden">
+                <div class="h-full rounded-full transition-all duration-1000 bg-gradient-to-r from-emerald-500 to-emerald-400" style="width: {{ attendance_rate }}%"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sessions Attended -->
+    <div class="glass-card rounded-2xl p-5 relative overflow-hidden group hover:scale-[1.02] transition-all">
+        <div class="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl -mr-16 -mt-16"></div>
+        <div class="relative z-10">
+            <div class="flex items-center justify-between mb-3">
+                <div class="p-2 bg-blue-500/20 rounded-lg">
+                    <i class="bi bi-person-check-fill text-blue-400 text-xl"></i>
+                </div>
+            </div>
+            
+            {% set present_count = records|selectattr("status", "equalto", "present")|list|length %}
+            {% set total_count = records|length %}
+            <div class="flex items-baseline gap-1 mb-1">
+                <h3 class="text-3xl font-bold text-white">{{ present_count }}</h3>
+                <span class="text-lg text-slate-500">/ {{ total_count }}</span>
+            </div>
+            <p class="text-sm text-slate-400">Sessions Attended</p>
+            
+            <div class="mt-3 text-xs text-slate-500">
+                {{ total_count - present_count }} sessions missed
+            </div>
+        </div>
+    </div>
+
+    <!-- Streak -->
+    <div class="glass-card rounded-2xl p-5 relative overflow-hidden group hover:scale-[1.02] transition-all">
+        <div class="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl -mr-16 -mt-16"></div>
+        <div class="relative z-10">
+            <div class="flex items-center justify-between mb-3">
+                <div class="p-2 bg-amber-500/20 rounded-lg">
+                    <i class="bi bi-fire text-amber-400 text-xl"></i>
+                </div>
+                {% if current_streak|default(0) >= 5 %}
+                <span class="text-xs font-medium text-amber-400 bg-amber-500/10 px-2 py-1 rounded-full animate-pulse">🔥 Hot Streak!</span>
+                {% endif %}
+            </div>
+            
+            <div class="flex items-baseline gap-1 mb-1">
+                <h3 class="text-3xl font-bold text-white">{{ current_streak|default(3) }}</h3>
+                <span class="text-sm text-slate-500">classes</span>
+            </div>
+            <p class="text-sm text-slate-400">Current Streak</p>
+            
+            <div class="mt-3 text-xs text-slate-500">
+                Best: {{ best_streak|default(8) }} classes
+            </div>
+        </div>
+    </div>
+
+    <!-- Next Class -->
+    <div class="glass-card rounded-2xl p-5 relative overflow-hidden group hover:scale-[1.02] transition-all">
+        <div class="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl -mr-16 -mt-16"></div>
+        <div class="relative z-10">
+            <div class="flex items-center justify-between mb-3">
+                <div class="p-2 bg-purple-500/20 rounded-lg">
+                    <i class="bi bi-clock-fill text-purple-400 text-xl"></i>
+                </div>
+            </div>
+            
+            <div class="flex items-baseline gap-1 mb-1">
+                <h3 class="text-lg font-bold text-white">{{ next_class|default('Tomorrow') }}</h3>
+            </div>
+            <p class="text-sm text-slate-400">Next Class</p>
+            
+            <div class="mt-3 text-xs text-purple-400">
+                {{ next_class_time|default('10:00 AM') }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Left Column: Calendar View -->
+    <div class="lg:col-span-2 space-y-6">
+        <!-- Attendance Calendar -->
+        <div class="glass-card rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="bi bi-calendar3-week text-blue-400"></i>
+                        Attendance Calendar
+                    </h3>
+                    <p class="text-sm text-slate-400">Your attendance history</p>
+                </div>
+                <div class="flex items-center gap-3 text-xs">
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-emerald-500"></span> Present</span>
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-red-500"></span> Absent</span>
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-amber-500"></span> Late</span>
+                </div>
+            </div>
+            
+            <!-- Calendar Grid -->
+            <div class="grid grid-cols-7 gap-2 mb-4">
+                <div class="text-center text-xs text-slate-500 font-medium py-2">Mon</div>
+                <div class="text-center text-xs text-slate-500 font-medium py-2">Tue</div>
+                <div class="text-center text-xs text-slate-500 font-medium py-2">Wed</div>
+                <div class="text-center text-xs text-slate-500 font-medium py-2">Thu</div>
+                <div class="text-center text-xs text-slate-500 font-medium py-2">Fri</div>
+                <div class="text-center text-xs text-slate-500 font-medium py-2">Sat</div>
+                <div class="text-center text-xs text-slate-500 font-medium py-2">Sun</div>
+                
+                {% for week in range(4) %}
+                    {% for day in range(7) %}
+                        {% set date_offset = week * 7 + day %}
+                        {% set has_record = records and date_offset < records|length %}
+                        {% if has_record %}
+                            {% set record = records[date_offset] %}
+                            {% set status = record.status %}
+                            {% set day_num = (date_offset % 30) + 1 %}
+                        {% else %}
+                            {% set status = None %}
+                            {% set day_num = (date_offset % 30) + 1 %}
+                        {% endif %}
+                        
+                        <div class="aspect-square rounded-xl relative group cursor-pointer {{ 
+                            'bg-gradient-to-br from-emerald-500/30 to-emerald-600/20 border-2 border-emerald-500/50' if status == 'present' else 
+                            'bg-gradient-to-br from-red-500/30 to-red-600/20 border-2 border-red-500/50' if status == 'absent' else 
+                            'bg-gradient-to-br from-amber-500/30 to-amber-600/20 border-2 border-amber-500/50' if status == 'late' else 
+                            'bg-slate-800/50 border border-white/5' 
+                        }} hover:scale-110 transition-all"
+                        {% if status %}onclick="showRecordDetail('{{ record.date }}', '{{ status }}')"{% endif %}>
+                            
+                            {% if status %}
+                            <div class="absolute inset-0 flex flex-col items-center justify-center p-1">
+                                <span class="text-xs font-bold text-white">{{ day_num }}</span>
+                                <i class="bi bi-{{ 'check-lg' if status == 'present' else 'x-lg' if status == 'absent' else 'clock' }} text-lg {{ 'text-emerald-300' if status == 'present' else 'text-red-300' if status == 'absent' else 'text-amber-300' }}"></i>
+                            </div>
+                            
+                            <!-- Tooltip -->
+                            <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-slate-800 rounded-lg text-xs text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-xl border border-white/10">
+                                {{ record.date }} - {{ status|title }}
+                            </div>
+                            {% else %}
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <span class="text-xs text-slate-600">{{ day_num }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                {% endfor %}
+            </div>
+            
+            <!-- Month Navigation -->
+            <div class="flex items-center justify-between pt-4 border-t border-white/10">
+                <button class="p-2 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white">
+                    <i class="bi bi-chevron-left"></i>
+                </button>
+                <span class="text-sm font-medium text-white">November 2024</span>
+                <button class="p-2 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white">
+                    <i class="bi bi-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Recent Records Table -->
+        <div class="glass-card rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="bi bi-clock-history text-purple-400"></i>
+                    Recent Sessions
+                </h3>
+                <button onclick="toggleView()" class="text-sm text-blue-400 hover:text-blue-300" id="toggleBtn">
+                    View All
+                </button>
+            </div>
+            
+            {% if records %}
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="border-b border-white/10">
+                            <th class="pb-3 text-xs font-semibold text-slate-400 uppercase">Date</th>
+                            <th class="pb-3 text-xs font-semibold text-slate-400 uppercase">Day</th>
+                            <th class="pb-3 text-xs font-semibold text-slate-400 uppercase text-center">Status</th>
+                            <th class="pb-3 text-xs font-semibold text-slate-400 uppercase text-right">Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-white/5" id="recordsTable">
+                        {% for record in records[:5] %}
+                        <tr class="hover:bg-white/5 transition-colors">
+                            <td class="py-3 text-sm text-white">{{ record.date }}</td>
+                            <td class="py-3 text-sm text-slate-400">{{ record.date|datetimeformat('%A') }}</td>
+                            <td class="py-3 text-center">
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border
+                                    {% if record.status == 'present' %}bg-emerald-500/10 text-emerald-400 border-emerald-500/20
+                                    {% elif record.status == 'absent' %}bg-red-500/10 text-red-400 border-red-500/20
+                                    {% elif record.status == 'late' %}bg-amber-500/10 text-amber-400 border-amber-500/20
+                                    {% else %}bg-slate-700 text-slate-400 border-slate-600{% endif %}">
+                                    <span class="w-1.5 h-1.5 rounded-full 
+                                        {% if record.status == 'present' %}bg-emerald-400 animate-pulse
+                                        {% elif record.status == 'absent' %}bg-red-400
+                                        {% elif record.status == 'late' %}bg-amber-400
+                                        {% else %}bg-slate-500{% endif %}">
+                                    </span>
+                                    {{ record.status|title }}
+                                </span>
+                            </td>
+                            <td class="py-3 text-right text-sm text-slate-500">
+                                {% if record.status == 'absent' %}
+                                <span class="text-red-400">Missed</span>
+                                {% elif record.status == 'late' %}
+                                <span class="text-amber-400">Arrived 10m late</span>
+                                {% else %}
+                                <span class="text-emerald-400">On time</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-8">
+                <div class="w-16 h-16 mx-auto mb-3 rounded-full bg-slate-800/50 flex items-center justify-center">
+                    <i class="bi bi-calendar-x text-2xl text-slate-600"></i>
+                </div>
+                <p class="text-slate-400">No attendance records yet</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Right Column: Insights & Actions -->
+    <div class="space-y-6">
+        <!-- Attendance Impact -->
+        <div class="glass-card rounded-2xl p-6">
+            <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <i class="bi bi-graph-up text-blue-400"></i>
+                Your Impact
+            </h3>
+            
+            <div class="space-y-4">
+                <div class="p-3 rounded-xl bg-white/5">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm text-slate-400">Grade Correlation</span>
+                        <span class="text-sm font-bold text-emerald-400">+12%</span>
+                    </div>
+                    <p class="text-xs text-slate-500">Students with 90%+ attendance score 12% higher on average</p>
+                </div>
+                
+                <div class="p-3 rounded-xl bg-white/5">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm text-slate-400">Your Position</span>
+                        <span class="text-sm font-bold text-blue-400">Top 25%</span>
+                    </div>
+                    <p class="text-xs text-slate-500">You're attending more classes than 75% of students</p>
+                </div>
+                
+                {% if attendance_rate < 75 %}
+                <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                    <div class="flex items-start gap-2">
+                        <i class="bi bi-exclamation-triangle-fill text-amber-400 mt-1"></i>
+                        <div>
+                            <p class="text-sm font-medium text-amber-300 mb-1">Attendance Alert</p>
+                            <p class="text-xs text-slate-400">Your attendance is below 75%. Consistent attendance is required for course completion.</p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- AI Tutor Help -->
+        {% if attendance_rate < 90 %}
+        <div class="glass-card rounded-2xl p-6">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
+                    <i class="bi bi-robot text-white text-lg"></i>
+                </div>
+                <h3 class="text-lg font-bold text-white">Missed a Class?</h3>
+            </div>
+            
+            <p class="text-sm text-slate-400 mb-4">Catch up on what you missed with AI Tutor</p>
+            
+            <a href="{{ url_for('ai.chat') }}" class="block w-full p-3 rounded-xl bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-all text-center text-sm font-medium border border-blue-500/30">
+                <i class="bi bi-chat-dots mr-2"></i>
+                Get Session Summary
+            </a>
+        </div>
+        {% endif %}
+
+        <!-- Attendance Goals -->
+        <div class="glass-card rounded-2xl p-6">
+            <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <i class="bi bi-flag-fill text-emerald-400"></i>
+                Goals
+            </h3>
+            
+            <div class="space-y-4">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm text-slate-300">90% Attendance</span>
+                        <span class="text-sm font-bold {{ 'text-emerald-400' if attendance_rate >= 90 else 'text-white' }}">
+                            {{ attendance_rate|round(1) }}/90%
+                        </span>
+                    </div>
+                    <div class="h-2 bg-slate-800 rounded-full overflow-hidden">
+                        <div class="h-full bg-gradient-to-r from-blue-500 to-emerald-500 rounded-full" style="width: {{ ((attendance_rate / 90 * 100)|round if attendance_rate <= 90 else 100) }}%"></div>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-2">
+                        {% if attendance_rate >= 90 %}
+                        🎉 Goal achieved! Excellent attendance!
+                        {% else %}
+                        {{ (90 - attendance_rate)|round(1) }}% more needed
+                        {% endif %}
+                    </p>
+                </div>
+                
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm text-slate-300">Perfect Week</span>
+                        <span class="text-sm font-bold text-white">4/5</span>
+                    </div>
+                    <div class="h-2 bg-slate-800 rounded-full overflow-hidden">
+                        <div class="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full" style="width: 80%"></div>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-2">Attend all classes next week!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="glass-card rounded-2xl p-6">
+            <h3 class="text-lg font-bold text-white mb-4">This Month</h3>
+            <div class="space-y-3">
+                <div class="flex items-center justify-between p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                    <div class="flex items-center gap-2">
+                        <i class="bi bi-check-circle-fill text-emerald-400"></i>
+                        <span class="text-sm text-emerald-300">Present</span>
+                    </div>
+                    <span class="text-lg font-bold text-white">{{ records|selectattr("status", "equalto", "present")|list|length }}</span>
+                </div>
+                <div class="flex items-center justify-between p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+                    <div class="flex items-center gap-2">
+                        <i class="bi bi-x-circle-fill text-red-400"></i>
+                        <span class="text-sm text-red-300">Absent</span>
+                    </div>
+                    <span class="text-lg font-bold text-white">{{ records|selectattr("status", "equalto", "absent")|list|length }}</span>
+                </div>
+                <div class="flex items-center justify-between p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                    <div class="flex items-center gap-2">
+                        <i class="bi bi-clock-fill text-amber-400"></i>
+                        <span class="text-sm text-amber-300">Late</span>
+                    </div>
+                    <span class="text-lg font-bold text-white">{{ records|selectattr("status", "equalto", "late")|list|length }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Record Detail Modal -->
+<div id="detailModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div class="glass-card rounded-2xl p-6 max-w-sm w-full transform scale-95 opacity-0 transition-all duration-300" id="detailModalContent">
+        <div class="text-center mb-4">
+            <div class="w-16 h-16 mx-auto rounded-full bg-slate-800 flex items-center justify-center mb-3">
+                <i id="detailIcon" class="bi bi-check-circle-fill text-3xl text-emerald-400"></i>
+            </div>
+            <h3 class="text-xl font-bold text-white" id="detailDate">Nov 15, 2024</h3>
+            <p class="text-lg text-emerald-400 font-medium" id="detailStatus">Present</p>
+        </div>
+        
+        <div class="space-y-3 mb-6">
+            <div class="flex items-center justify-between p-3 rounded-xl bg-white/5">
+                <span class="text-sm text-slate-400">Time</span>
+                <span class="text-sm text-white font-medium">10:00 AM - 11:30 AM</span>
+            </div>
+            <div class="flex items-center justify-between p-3 rounded-xl bg-white/5">
+                <span class="text-sm text-slate-400">Topic</span>
+                <span class="text-sm text-white font-medium">Introduction to AI</span>
+            </div>
+            <div class="flex items-center justify-between p-3 rounded-xl bg-white/5">
+                <span class="text-sm text-slate-400">Recorded by</span>
+                <span class="text-sm text-white font-medium">Dr. Smith</span>
+            </div>
+        </div>
+        
+        <button onclick="closeDetailModal()" class="w-full px-4 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all">
+            Close
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Show record detail modal
+    function showRecordDetail(date, status) {
+        const modal = document.getElementById('detailModal');
+        const content = document.getElementById('detailModalContent');
+        
+        document.getElementById('detailDate').textContent = date;
+        document.getElementById('detailStatus').textContent = status.charAt(0).toUpperCase() + status.slice(1);
+        
+        const icon = document.getElementById('detailIcon');
+        const statusConfig = {
+            'present': { icon: 'check-circle-fill', color: 'text-emerald-400', bg: 'bg-emerald-500/20' },
+            'absent': { icon: 'x-circle-fill', color: 'text-red-400', bg: 'bg-red-500/20' },
+            'late': { icon: 'clock-fill', color: 'text-amber-400', bg: 'bg-amber-500/20' }
+        };
+        const config = statusConfig[status];
+        icon.className = `bi bi-${config.icon} text-3xl ${config.color}`;
+        
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            content.classList.remove('scale-95', 'opacity-0');
+            content.classList.add('scale-100', 'opacity-100');
+        }, 10);
+    }
+    
+    function closeDetailModal() {
+        const modal = document.getElementById('detailModal');
+        const content = document.getElementById('detailModalContent');
+        content.classList.remove('scale-100', 'opacity-100');
+        content.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => modal.classList.add('hidden'), 300);
+    }
+    
+    // Toggle table view
+    let showAll = false;
+    function toggleView() {
+        showAll = !showAll;
+        const btn = document.getElementById('toggleBtn');
+        btn.textContent = showAll ? 'Show Less' : 'View All';
+        // In real implementation, this would toggle the table rows
+    }
+    
+    // Close modal on backdrop click
+    document.getElementById('detailModal').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) closeDetailModal();
+    });
+</script>
+{% endblock %}

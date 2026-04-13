@@ -60,6 +60,10 @@
     <div class="lg:col-span-2 space-y-6">
         <!-- Module Details Form -->
         <form method="POST" id="moduleForm" class="bento-item glass-card p-6 animate-slide-up" style="animation-delay: 0.1s">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            {# Intentionally no debug banners in production UI #}
+            
             <div class="flex items-center gap-3 mb-6">
                 <div class="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
                     <i class="bi bi-pencil-square text-blue-400"></i>
@@ -174,7 +178,7 @@
                    class="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 font-semibold text-center transition-all">
                     Cancel
                 </a>
-                <button type="submit" 
+                <button type="submit"
                         class="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all flex items-center justify-center gap-2 hover:-translate-y-0.5">
                     <i class="bi bi-plus-lg"></i>
                     Create Module
@@ -372,15 +376,23 @@
         btn.parentElement.remove();
     }
 
-    // Form validation
+    // Form validation - removed to debug
+    // document.getElementById('moduleForm').addEventListener('submit', function(e) {
+    //     const title = document.getElementById('moduleTitle').value.trim();
+    //     if (!title) {
+    //         e.preventDefault();
+    //         showToast('Please enter a module title', 'error');
+    //         document.getElementById('moduleTitle').focus();
+    //         return;
+    //     }
+    // });
+
+    // Debug: Log form submission
     document.getElementById('moduleForm').addEventListener('submit', function(e) {
-        const title = document.getElementById('moduleTitle').value.trim();
-        if (!title) {
-            e.preventDefault();
-            showToast('Please enter a module title', 'error');
-            document.getElementById('moduleTitle').focus();
-            return;
-        }
+        console.log('FORM SUBMIT: Event triggered');
+        const formData = new FormData(this);
+        console.log('FORM SUBMIT: Title = ' + formData.get('title'));
+        console.log('FORM SUBMIT: Position = ' + formData.get('position_type'));
     });
 
     // Toast notification

@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}Grade Submission - EduMind AI{% endblock %}
+
+{% block page_title %}Grade Submission{% endblock %}
+
+{% block content %}
+<!-- Back Link -->
+<div class="mb-6 animate-slide-up">
+    <a href="{{ url_for('assignments.view_submissions', assignment_id=assignment.id) }}" class="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors">
+        <i class="bi bi-arrow-left"></i> Back to Submissions
+    </a>
+</div>
+
+<div class="max-w-2xl mx-auto animate-slide-up">
+    <div class="glass-card rounded-2xl p-6">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-2xl font-bold text-white mb-2">Grade Submission</h1>
+            <p class="text-slate-400">
+                {{ assignment.title }} • {{ course.name }} ({{ course.code }})
+            </p>
+        </div>
+
+        <!-- Student Info -->
+        <div class="bg-white/5 rounded-xl p-4 mb-6">
+            <div class="flex items-center gap-4">
+                {% if submission.student and submission.student.user %}
+                <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium">
+                    {{ submission.student.user.first_name[0] if submission.student.user.first_name }}{{ submission.student.user.last_name[0] if submission.student.user.last_name }}
+                </div>
+                <div>
+                    <div class="font-medium text-white text-lg">
+                        {{ submission.student.user.first_name }} {{ submission.student.user.last_name }}
+                    </div>
+                    <div class="text-sm text-slate-400">
+                        {{ submission.student.student_id }}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Submission Details -->
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div class="bg-white/5 rounded-xl p-4">
+                <div class="text-sm text-slate-400 mb-1">File</div>
+                <div class="flex items-center gap-2 text-white">
+                    <i class="bi bi-file-earmark text-blue-400"></i>
+                    {{ submission.file_name }}
+                </div>
+            </div>
+            <div class="bg-white/5 rounded-xl p-4">
+                <div class="text-sm text-slate-400 mb-1">Submitted</div>
+                <div class="text-white">
+                    {{ submission.submitted_at.strftime('%B %d, %Y at %H:%M') if submission.submitted_at else 'N/A' }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Download Button -->
+        <div class="mb-6">
+            <a href="{{ url_for('assignments.download_submission', submission_id=submission.id) }}" 
+               class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors">
+                <i class="bi bi-download"></i> Download Submission File
+            </a>
+        </div>
+
+        <!-- Current Grade (if already graded) -->
+        {% if submission.mark != None %}
+        <div class="bg-green-500/10 border border-green-500/20 rounded-xl p-4 mb-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="text-sm text-green-400 mb-1">Current Grade</div>
+                    <div class="text-3xl font-bold text-white">
+                        {{ submission.mark }} / {{ assignment.total_marks }}
+                        <span class="ml-2 text-lg font-normal text-slate-400">
+                            ({{ submission.grade }})
+                        </span>
+                    </div>
+                </div>
+                <div class="text-right text-sm text-slate-400">
+                    {% if submission.graded_at %}
+                    Graded on {{ submission.graded_at.strftime('%b %d, %Y') }}
+                    {% endif %}
+                </div>
+            </div>
+            {% if submission.feedback %}
+            <div class="mt-3 pt-3 border-t border-green-500/20">
+                <div class="text-sm text-green-400 mb-1">Feedback:</div>
+                <div class="text-white">{{ submission.feedback }}</div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Grade Form -->
+        <form method="POST" class="space-y-6">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <div>
+                <label for="mark" class="block text-sm font-medium text-slate-300 mb-2">
+                    Mark <span class="text-red-400">*</span>
+                    <span class="text-slate-500 font-normal">(out of {{ assignment.total_marks }})</span>
+                </label>
+                <input type="number" name="mark" id="mark" 
+                       value="{{ submission.mark if submission.mark != None else '' }}"
+                       min="0" max="{{ assignment.total_marks }}" step="0.5" required
+                       class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                       placeholder="Enter mark">
+                
+                <!-- Quick grade buttons -->
+                <div class="flex flex-wrap gap-2 mt-3">
+                    <button type="button" class="px-3 py-1 rounded-lg bg-white/5 text-slate-400 text-sm hover:bg-white/10 hover:text-white transition-colors" 
+                            onclick="document.getElementById('mark').value = Math.round({{ assignment.total_marks }} * 0.9)">
+                        A (90%)
+                    </button>
+                    <button type="button" class="px-3 py-1 rounded-lg bg-white/5 text-slate-400 text-sm hover:bg-white/10 hover:text-white transition-colors"
+                            onclick="document.getElementById('mark').value = Math.round({{ assignment.total_marks }} * 0.8)">
+                        B (80%)
+                    </button>
+                    <button type="button" class="px-3 py-1 rounded-lg bg-white/5 text-slate-400 text-sm hover:bg-white/10 hover:text-white transition-colors"
+                            onclick="document.getElementById('mark').value = Math.round({{ assignment.total_marks }} * 0.7)">
+                        C (70%)
+                    </button>
+                    <button type="button" class="px-3 py-1 rounded-lg bg-white/5 text-slate-400 text-sm hover:bg-white/10 hover:text-white transition-colors"
+                            onclick="document.getElementById('mark').value = Math.round({{ assignment.total_marks }} * 0.6)">
+                        D (60%)
+                    </button>
+                </div>
+            </div>
+
+            <div>
+                <label for="feedback" class="block text-sm font-medium text-slate-300 mb-2">
+                    Feedback (Optional)
+                </label>
+                <textarea name="feedback" id="feedback" rows="5"
+                          class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors resize-none"
+                          placeholder="Provide constructive feedback for the student...">{{ submission.feedback if submission.feedback else '' }}</textarea>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="flex gap-4">
+                <a href="{{ url_for('assignments.view_submissions', assignment_id=assignment.id) }}" 
+                   class="flex-1 px-5 py-3 rounded-xl bg-white/10 text-white font-medium text-center hover:bg-white/20 transition-colors">
+                    Cancel
+                </a>
+                <button type="submit" 
+                        class="flex-1 px-5 py-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold shadow-lg shadow-green-500/25 hover:shadow-green-500/40 transition-all hover:-translate-y-0.5">
+                    <i class="bi bi-check-circle mr-2"></i> Save Grade
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

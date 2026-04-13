@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Job Readiness Score - {{ super() }}{% endblock %}
+
+{% block page_title %}Job Readiness Score{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="glass-card rounded-2xl p-6">
+        <h2 class="text-xl font-bold text-white">Job Readiness Score</h2>
+        <p class="text-slate-400">Track your career readiness based on CV reviews.</p>
+    </div>
+
+    {% if latest_review and latest_review.job_readiness_score %}
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="glass-card rounded-2xl p-8 text-center">
+            <div class="relative w-48 h-48 mx-auto mb-6">
+                <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="8"/>
+                    <circle cx="50" cy="50" r="45" fill="none" stroke="url(#scoreGrad)" stroke-width="8"
+                        stroke-linecap="round" stroke-dasharray="283"
+                        stroke-dashoffset="{{ 283 - (283 * latest_review.job_readiness_score / 100) }}"/>
+                    <defs>
+                        <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="#3b82f6"/>
+                            <stop offset="100%" stop-color="#8b5cf6"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <div class="absolute inset-0 flex flex-col items-center justify-center">
+                    <span class="text-5xl font-display font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                        {{ latest_review.job_readiness_score|round|int }}
+                    </span>
+                    <span class="text-sm text-slate-400">/ 100</span>
+                </div>
+            </div>
+            <h3 class="text-lg font-semibold text-white mb-2">
+                {% if latest_review.job_readiness_score >= 80 %}Excellent!
+                {% elif latest_review.job_readiness_score >= 60 %}Good Progress
+                {% elif latest_review.job_readiness_score >= 40 %}Getting There
+                {% else %}Needs Improvement{% endif %}
+            </h3>
+            <p class="text-slate-400 text-sm">Last assessed {{ latest_review.reviewed_at.strftime('%b %d, %Y') if latest_review.reviewed_at else latest_review.created_at.strftime('%b %d, %Y') }}</p>
+        </div>
+
+        <div class="lg:col-span-2 glass-card rounded-2xl p-6">
+            <h3 class="font-display font-semibold text-lg mb-4">Score History</h3>
+            {% if scores %}
+            <div class="space-y-3">
+                {% for entry in scores %}
+                <div class="flex items-center gap-4 p-3 rounded-xl bg-white/5">
+                    <div class="w-10 h-10 rounded-lg flex items-center justify-center
+                        {% if entry.score >= 80 %}bg-emerald-500/20
+                        {% elif entry.score >= 60 %}bg-blue-500/20
+                        {% elif entry.score >= 40 %}bg-amber-500/20
+                        {% else %}bg-red-500/20{% endif %}">
+                        <i class="bi bi-graph-up text-lg
+                            {% if entry.score >= 80 %}text-emerald-400
+                            {% elif entry.score >= 60 %}text-blue-400
+                            {% elif entry.score >= 40 %}text-amber-400
+                            {% else %}text-red-400{% endif %}"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="font-medium text-white text-sm">{{ entry.score|round|int }}%</p>
+                        <p class="text-xs text-slate-400">{{ entry.date.strftime('%b %d, %Y') if entry.date else 'N/A' }}</p>
+                    </div>
+                    <div class="w-32 h-2 bg-white/10 rounded-full overflow-hidden">
+                        <div class="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full" style="width: {{ entry.score }}%"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-slate-400 text-center py-8">No scored reviews yet.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if latest_review.strengths or latest_review.weaknesses %}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {% if latest_review.strengths %}
+        <div class="glass-card rounded-2xl p-6 border border-emerald-500/20">
+            <h3 class="font-display font-semibold text-lg mb-4 flex items-center gap-2">
+                <i class="bi bi-check-circle text-emerald-400"></i>
+                Strengths
+            </h3>
+            <div class="space-y-2">
+                {% for line in latest_review.strengths.split('\n') %}
+                {% if line.strip() %}
+                <p class="text-sm text-slate-300 flex items-start gap-2">
+                    <i class="bi bi-check2 text-emerald-400 mt-0.5"></i>
+                    {{ line.strip('- ') }}
+                </p>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        {% if latest_review.weaknesses %}
+        <div class="glass-card rounded-2xl p-6 border border-amber-500/20">
+            <h3 class="font-display font-semibold text-lg mb-4 flex items-center gap-2">
+                <i class="bi bi-exclamation-triangle text-amber-400"></i>
+                Areas to Improve
+            </h3>
+            <div class="space-y-2">
+                {% for line in latest_review.weaknesses.split('\n') %}
+                {% if line.strip() %}
+                <p class="text-sm text-slate-300 flex items-start gap-2">
+                    <i class="bi bi-arrow-up text-amber-400 mt-0.5"></i>
+                    {{ line.strip('- ') }}
+                </p>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="glass-card rounded-2xl p-12 text-center">
+        <div class="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center mx-auto mb-4">
+            <i class="bi bi-speedometer2 text-4xl text-blue-400"></i>
+        </div>
+        <h3 class="font-display text-xl font-semibold text-white mb-2">No Score Yet</h3>
+        <p class="text-slate-400 text-sm max-w-md mx-auto mb-6">
+            Upload your CV and wait for advisor review to get your job readiness score.
+        </p>
+        <a href="{{ url_for('career.upload_cv') }}" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all">
+            <i class="bi bi-upload"></i>
+            Upload CV
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Skills Suggestions - {{ super() }}{% endblock %}
+
+{% block page_title %}Skills Suggestions{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="glass-card rounded-2xl p-6">
+        <h2 class="text-xl font-bold text-white">Skills Suggestions</h2>
+        <p class="text-slate-400">Recommended skills and projects based on your CV reviews.</p>
+    </div>
+
+    {% if skills or projects %}
+        {% if skills %}
+        <div class="glass-card rounded-2xl p-6">
+            <h3 class="font-display font-semibold text-lg mb-4 flex items-center gap-2">
+                <i class="bi bi-lightbulb text-amber-400"></i>
+                Recommended Skills
+            </h3>
+            <div class="flex flex-wrap gap-3">
+                {% for skill in skills %}
+                <span class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 text-blue-300 text-sm font-medium hover:border-blue-500/40 transition-all">
+                    <i class="bi bi-star-fill text-amber-400"></i>
+                    {{ skill }}
+                </span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if projects %}
+        <div class="glass-card rounded-2xl p-6">
+            <h3 class="font-display font-semibold text-lg mb-4 flex items-center gap-2">
+                <i class="bi bi-code-slash text-emerald-400"></i>
+                Project Suggestions
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% for project in projects %}
+                <div class="p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-all">
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                            <i class="bi bi-folder2-open text-emerald-400"></i>
+                        </div>
+                        <p class="text-sm text-slate-300">{{ project }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    {% else %}
+        <div class="glass-card rounded-2xl p-12 text-center">
+            <div class="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center mx-auto mb-4">
+                <i class="bi bi-lightbulb text-4xl text-blue-400"></i>
+            </div>
+            <h3 class="font-display text-xl font-semibold text-white mb-2">No Suggestions Yet</h3>
+            <p class="text-slate-400 text-sm max-w-md mx-auto mb-6">
+                Get your CV reviewed to receive personalized skill and project recommendations.
+            </p>
+            <a href="{{ url_for('career.upload_cv') }}" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all">
+                <i class="bi bi-upload"></i>
+                Upload CV
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

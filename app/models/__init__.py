@@ -1,7 +1,8 @@
 from app.models.user import User
 from app.models.student import Student
-from app.models.lecturer import Lecturer
+from app.models.lecturer import Lecturer, LecturerModule
 from app.models.course import Course, Module, Enrollment
+from app.models.student_module_progress import StudentModuleProgress
 from app.models.material import CourseMaterial
 from app.models.quiz import Quiz, QuizQuestion, QuizResult
 from app.models.attendance import Attendance
@@ -10,14 +11,19 @@ from app.models.study_plan import StudyPlan, StudyPlanItem
 from app.models.chat import ChatSession, ChatMessage
 from app.models.cv_review import CVReview
 from app.models.risk_score import RiskScore
+from app.models.notification import Notification, InterventionMessage
+from app.models.assignment import Assignment, AssignmentSubmission, AssignmentAttachment
+from app.models.otp import OTP
 
 __all__ = [
     'User',
     'Student',
     'Lecturer', 
+    'LecturerModule',  # NEW - many-to-many lecturer-module assignments
     'Course',
     'Module',
     'Enrollment',
+    'StudentModuleProgress',  # NEW - module-level progress tracking
     'CourseMaterial',
     'Quiz',
     'QuizQuestion',
@@ -29,5 +35,11 @@ __all__ = [
     'ChatSession',
     'ChatMessage',
     'CVReview',
-    'RiskScore'
+    'RiskScore',
+    'Notification',
+    'InterventionMessage',
+    'Assignment',
+    'AssignmentSubmission',
+    'AssignmentAttachment',
+    'OTP'
 ]

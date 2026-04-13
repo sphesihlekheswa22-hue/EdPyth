@@ -9,6 +9,7 @@ from flask_session import Session
 from werkzeug.exceptions import HTTPException
 
 from app.config import config
+from app.utils.app_time import APP_TIMEZONE_LABEL
 
 # Initialize extensions
 db = SQLAlchemy()
@@ -26,6 +27,18 @@ def create_app(config_name='default'):
     """Application factory for creating Flask app."""
     app = Flask(__name__)
     app.config.from_object(config[config_name])
+
+    # Production safety checks (only when production config is selected)
+    if config_name == 'production':
+        if not app.config.get('SECRET_KEY') or not app.config.get('SESSION_SECRET_KEY'):
+            raise RuntimeError(
+                "Missing production secrets. Set SECRET_KEY and SESSION_SECRET_KEY "
+                "(environment variables) or run with FLASK_ENV=development."
+            )
+    
+    # Disable Jinja2 template caching in development
+    if app.config.get('DEBUG'):
+        app.jinja_env.cache = {}
     
     # Add Python built-ins to Jinja2 globals
     app.jinja_env.globals.update(
@@ -37,7 +50,8 @@ def create_app(config_name='default'):
         range=range,
         len=len,
         enumerate=enumerate,
-        zip=zip
+        zip=zip,
+        app_timezone_label=APP_TIMEZONE_LABEL,
     )
     
     # Register custom Jinja2 filters
@@ -69,6 +83,17 @@ def create_app(config_name='default'):
     migrate.init_app(app, db)
     session.init_app(app)
     
+    # ==================== CACHE CONTROL ====================
+    @app.after_request
+    def add_cache_headers(response):
+        """Add cache control headers to prevent browser caching in development."""
+        # In development, always get fresh content
+        if app.config.get('DEBUG'):
+            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+        return response
+    
     # Initialize login manager from user_loader module
     from app.utils.user_loader import login_manager
     login_manager.init_app(app)
@@ -92,6 +117,7 @@ def create_app(config_name='default'):
     from app.routes.career import career_bp
     from app.routes.analytics import analytics_bp
     from app.routes.admin import admin_bp
+    from app.routes.assignments import assignments_bp
     
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
@@ -104,6 +130,9 @@ def create_app(config_name='default'):
     app.register_blueprint(career_bp)
     app.register_blueprint(analytics_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(assignments_bp)
+    from app.routes.notifications import notifications_bp
+    app.register_blueprint(notifications_bp)
     
     # ==================== ERROR HANDLERS ====================
     @app.errorhandler(404)
@@ -127,7 +156,21 @@ def create_app(config_name='default'):
     @app.errorhandler(403)
     def forbidden_error(error):
         """Handle 403 Forbidden errors."""
-        logger.warning(f"403 error: {request.path}")
+        try:
+            user_id = getattr(current_user, "id", None)
+            role = getattr(current_user, "role", None)
+            is_auth = bool(getattr(current_user, "is_authenticated", False))
+        except Exception:
+            user_id = None
+            role = None
+            is_auth = False
+
+        description = getattr(error, "description", None)
+        logger.warning(
+            f"403 error: {request.method} {request.path} "
+            f"(auth={is_auth}, user_id={user_id}, role={role}) "
+            f"description={description!r}"
+        )
         return render_template('error.html', error_code=403, 
                                error_message="Access Forbidden",
                                error_description="You don't have permission to access this resource."), 403
@@ -166,8 +209,26 @@ def create_app(config_name='default'):
                                error_message="Internal Server Error",
                                error_description="An unexpected error occurred. Our team has been notified."), 500
 
-    # Create database tables
+    # Create database tables in development/testing only.
+    # In production, schema should be managed via migrations.
+    if app.config.get("DEBUG") or app.config.get("TESTING"):
+        with app.app_context():
+            db.create_all()
+
+    # SQLite: add quiz timer column on existing DBs (no-op if already present)
     with app.app_context():
-        db.create_all()
-    
+        try:
+            from sqlalchemy import inspect, text
+            insp = inspect(db.engine)
+            if "quizzes" in insp.get_table_names():
+                col_names = {c["name"] for c in insp.get_columns("quizzes")}
+                if "time_limit_seconds" not in col_names:
+                    with db.engine.begin() as conn:
+                        conn.execute(
+                            text("ALTER TABLE quizzes ADD COLUMN time_limit_seconds INTEGER")
+                        )
+                    logger.info("Added quizzes.time_limit_seconds column")
+        except Exception:
+            logger.exception("Could not apply quizzes.time_limit_seconds schema patch")
+
     return app

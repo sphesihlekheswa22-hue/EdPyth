@@ -1,5 +1,5 @@
-from datetime import datetime
 from app import db
+from app.utils.app_time import app_now
 
 
 class ChatSession(db.Model):
@@ -12,8 +12,8 @@ class ChatSession(db.Model):
     course_id = db.Column(db.Integer, db.ForeignKey('courses.id'), nullable=True)
     topic = db.Column(db.String(100), nullable=True)
     is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=app_now)
+    updated_at = db.Column(db.DateTime, default=app_now, onupdate=app_now)
     
     # Relationships
     course = db.relationship('Course', backref='chat_sessions')
@@ -45,7 +45,7 @@ class ChatMessage(db.Model):
     role = db.Column(db.String(20), nullable=False)  # user, assistant
     content = db.Column(db.Text, nullable=False)
     is_ai = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=app_now)
     
     def __repr__(self):
         return f'<ChatMessage {self.id}>'

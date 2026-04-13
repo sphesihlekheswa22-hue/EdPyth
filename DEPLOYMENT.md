@@ -20,12 +20,10 @@
   ```
 - **Use ZIP upload**: Zip your project locally, then upload the ZIP file and extract it in PythonAnywhere
 
-### Step 2: Create MySQL Database
-1. Go to the **Databases** tab
-2. Create a new MySQL database:
-   - Database name: `yourusername$edumind` (or whatever you prefer)
-   - Username and password: Note these down
-3. Initialize the database tables using the PythonAnywhere console
+### Step 2: Database Setup (SQLite)
+The application uses SQLite by default. The database file will be created automatically at `app/edumind_ai.db` when you first run the application.
+
+No manual database setup is required - SQLite databases are file-based and will be created on first use.
 
 ### Step 3: Configure Environment Variables
 Go to the **Web** tab and add the following in the **Environment variables** section:
@@ -33,9 +31,11 @@ Go to the **Web** tab and add the following in the **Environment variables** sec
 ```
 FLASK_ENV=production
 SECRET_KEY=your-secure-random-secret-key
-DATABASE_URL=mysql://username:password@localhost/databasename
-NVIDIA_API_KEY=your-nvidia-api-key (optional)
+SESSION_SECRET_KEY=your-secure-random-session-secret-key
+OPENROUTER_API_KEY=your-openrouter-api-key (optional, for AI features)
 ```
+
+Note: No DATABASE_URL is needed as the application uses SQLite by default.
 
 ### Step 4: Configure WSGI File
 1. Go to the **Web** tab
@@ -49,7 +49,16 @@ pip install -r ~/App2Python/requirements.txt
 ```
 
 ### Step 6: Initialize Database
-Run the following in a PythonAnywhere console:
+In production, the schema should be managed via migrations (recommended).
+If you are using SQLite and deploying for the first time, run migrations (or create tables once) before first request.
+
+**Recommended (migrations):**
+```bash
+cd ~/App2Python
+flask db upgrade
+```
+
+**Fallback (not recommended long-term):**
 ```bash
 cd ~/App2Python
 python -c "from app import create_app, db; app = create_app('production'); app.app_context().push(); db.create_all()"
@@ -61,7 +70,7 @@ Go to the **Web** tab and click the **Reload** button.
 ## Troubleshooting
 
 ### Common Issues:
-1. **Database connection errors**: Check your DATABASE_URL format
+1. **Database file permissions**: Ensure the app directory has write permissions for SQLite database creation
 2. **Static files not loading**: Make sure to run `collectstatic` if using Flask-Staff
 3. **Import errors**: Check that all files are in the correct directories
 
@@ -71,4 +80,4 @@ Check the **Logs** tab in PythonAnywhere for error messages.
 ## Important Notes:
 - The app runs in production mode with `DEBUG=False`
 - Session data is stored in the filesystem by default
-- Make sure to set a strong SECRET_KEY for production
+- Make sure to set strong `SECRET_KEY` and `SESSION_SECRET_KEY` for production

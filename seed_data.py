@@ -12,12 +12,133 @@ import random
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app import create_app, db, bcrypt
+from app.utils.app_time import app_now
 from app.models import (
     User, Student, Lecturer, Course, Module, Enrollment,
     CourseMaterial, Quiz, QuizQuestion, QuizResult,
     Attendance, Mark, StudyPlan, StudyPlanItem,
-    ChatSession, ChatMessage, CVReview, RiskScore
+    ChatSession, ChatMessage, CVReview, RiskScore,
+    Assignment, AssignmentAttachment, AssignmentSubmission,
 )
+
+def _static_dir_candidates() -> list[str]:
+    """Return possible absolute paths to the Flask static directory."""
+    root = os.path.dirname(os.path.abspath(__file__))
+    return [
+        os.path.join(root, "app", "static"),
+        os.path.join(root, "app", "app", "static"),
+    ]
+
+
+def _write_bytes_under_static(static_rel_path: str, data: bytes) -> None:
+    """
+    Write bytes to *all* discovered static dirs.
+    `static_rel_path` must be relative to /static (e.g. 'uploads/materials/1/file.pdf').
+    """
+    rel = static_rel_path.lstrip("/").replace("/", os.sep)
+    for static_dir in _static_dir_candidates():
+        if not os.path.isdir(static_dir):
+            continue
+        abs_path = os.path.join(static_dir, rel)
+        os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+        if not os.path.exists(abs_path):
+            with open(abs_path, "wb") as f:
+                f.write(data)
+
+
+def _tiny_pdf_bytes(title: str) -> bytes:
+    """
+    Minimal PDF bytes (enough to download/open in most viewers).
+    Keeps repo/demo files tiny.
+    """
+    txt = (title or "EduMind Demo File").replace("(", "").replace(")", "")
+    body = f"""%PDF-1.4
+1 0 obj<<>>endobj
+2 0 obj<< /Length 44 >>stream
+BT /F1 18 Tf 72 720 Td ({txt}) Tj ET
+endstream endobj
+3 0 obj<< /Type /Catalog /Pages 4 0 R >>endobj
+4 0 obj<< /Type /Pages /Kids [5 0 R] /Count 1 >>endobj
+5 0 obj<< /Type /Page /Parent 4 0 R /MediaBox [0 0 612 792] /Contents 2 0 R >>endobj
+xref
+0 6
+0000000000 65535 f 
+0000000010 00000 n 
+0000000030 00000 n 
+0000000125 00000 n 
+0000000173 00000 n 
+0000000230 00000 n 
+trailer<< /Size 6 /Root 3 0 R >>
+startxref
+310
+%%EOF
+"""
+    return body.encode("utf-8", errors="ignore")
+
+def _uploads_dir_candidates() -> list[str]:
+    """Return possible absolute paths to the uploads directory (static/uploads)."""
+    out = []
+    for static_dir in _static_dir_candidates():
+        out.append(os.path.join(static_dir, "uploads"))
+    return out
+
+
+def _write_bytes_under_uploads(uploads_rel_path: str, data: bytes) -> None:
+    """
+    Write bytes to *all* discovered uploads dirs.
+    `uploads_rel_path` must be relative to /static/uploads (e.g. 'assignments/specs/1/file.pdf').
+    """
+    rel = uploads_rel_path.lstrip("/").replace("/", os.sep)
+    for uploads_dir in _uploads_dir_candidates():
+        if not os.path.isdir(uploads_dir):
+            continue
+        abs_path = os.path.join(uploads_dir, rel)
+        os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+        if not os.path.exists(abs_path):
+            with open(abs_path, "wb") as f:
+                f.write(data)
+
+
+def _primary_uploads_dir() -> str:
+    """Pick one uploads dir that exists (fallback to first candidate)."""
+    for uploads_dir in _uploads_dir_candidates():
+        if os.path.isdir(uploads_dir):
+            return uploads_dir
+    return _uploads_dir_candidates()[0]
+
+def clear_all_data():
+    """Clear all data from the database before seeding."""
+    print("Clearing existing data...")
+    
+    # Import LecturerModule for clearing
+    from app.models.lecturer import LecturerModule
+    
+    # Delete in reverse order of dependencies
+    ChatMessage.query.delete()
+    ChatSession.query.delete()
+    StudyPlanItem.query.delete()
+    StudyPlan.query.delete()
+    RiskScore.query.delete()
+    CVReview.query.delete()
+    AssignmentSubmission.query.delete()
+    AssignmentAttachment.query.delete()
+    Assignment.query.delete()
+    QuizResult.query.delete()
+    QuizQuestion.query.delete()
+    Quiz.query.delete()
+    CourseMaterial.query.delete()
+    Attendance.query.delete()
+    Mark.query.delete()
+    Enrollment.query.delete()
+    LecturerModule.query.delete()  # Clear lecturer-module assignments
+    Module.query.delete()
+    Course.query.delete()
+    Student.query.delete()
+    Lecturer.query.delete()
+    User.query.delete()
+    
+    db.session.commit()
+    print("  All existing data cleared.")
 
 def seed_users():
     """Create users for admin, lecturers, career advisor, and students."""
@@ -25,27 +146,27 @@ def seed_users():
     
     users_data = [
         # Admin
-        {'email': 'admin@edumind.com', 'first_name': 'System', 'last_name': 'Admin', 'role': 'admin', 'password': 'admin123'},
+        {'email': 'admin@edumind.com', 'first_name': 'System', 'last_name': 'Admin', 'role': 'admin', 'password': 'admin123', 'email_verified': True},
         
         # Career Advisor
-        {'email': 'career@edumind.com', 'first_name': 'Sarah', 'last_name': 'Johnson', 'role': 'career_advisor', 'password': 'career123'},
+        {'email': 'career@edumind.com', 'first_name': 'Sarah', 'last_name': 'Johnson', 'role': 'career_advisor', 'password': 'career123', 'email_verified': True},
         
         # Lecturers
-        {'email': 'john.smith@edumind.com', 'first_name': 'John', 'last_name': 'Smith', 'role': 'lecturer', 'password': 'lecturer123'},
-        {'email': 'emily.davis@edumind.com', 'first_name': 'Emily', 'last_name': 'Davis', 'role': 'lecturer', 'password': 'lecturer123'},
-        {'email': 'michael.brown@edumind.com', 'first_name': 'Michael', 'last_name': 'Brown', 'role': 'lecturer', 'password': 'lecturer123'},
-        {'email': 'jennifer.wilson@edumind.com', 'first_name': 'Jennifer', 'last_name': 'Wilson', 'role': 'lecturer', 'password': 'lecturer123'},
-        {'email': 'david.lee@edumind.com', 'first_name': 'David', 'last_name': 'Lee', 'role': 'lecturer', 'password': 'lecturer123'},
+        {'email': 'john.smith@edumind.com', 'first_name': 'John', 'last_name': 'Smith', 'role': 'lecturer', 'password': 'lecturer123', 'email_verified': True},
+        {'email': 'emily.davis@edumind.com', 'first_name': 'Emily', 'last_name': 'Davis', 'role': 'lecturer', 'password': 'lecturer123', 'email_verified': True},
+        {'email': 'michael.brown@edumind.com', 'first_name': 'Michael', 'last_name': 'Brown', 'role': 'lecturer', 'password': 'lecturer123', 'email_verified': True},
+        {'email': 'jennifer.wilson@edumind.com', 'first_name': 'Jennifer', 'last_name': 'Wilson', 'role': 'lecturer', 'password': 'lecturer123', 'email_verified': True},
+        {'email': 'david.lee@edumind.com', 'first_name': 'David', 'last_name': 'Lee', 'role': 'lecturer', 'password': 'lecturer123', 'email_verified': True},
         
         # Students
-        {'email': 'alex.thompson@student.edumind.com', 'first_name': 'Alex', 'last_name': 'Thompson', 'role': 'student', 'password': 'student123'},
-        {'email': 'sophia.martinez@student.edumind.com', 'first_name': 'Sophia', 'last_name': 'Martinez', 'role': 'student', 'password': 'student123'},
-        {'email': 'lucas.anderson@student.edumind.com', 'first_name': 'Lucas', 'last_name': 'Anderson', 'role': 'student', 'password': 'student123'},
-        {'email': 'olivia.taylor@student.edumind.com', 'first_name': 'Olivia', 'last_name': 'Taylor', 'role': 'student', 'password': 'student123'},
-        {'email': 'noah.white@student.edumind.com', 'first_name': 'Noah', 'last_name': 'White', 'role': 'student', 'password': 'student123'},
-        {'email': 'emma.harris@student.edumind.com', 'first_name': 'Emma', 'last_name': 'Harris', 'role': 'student', 'password': 'student123'},
-        {'email': 'liam.clark@student.edumind.com', 'first_name': 'Liam', 'last_name': 'Clark', 'role': 'student', 'password': 'student123'},
-        {'email': 'ava.lewis@student.edumind.com', 'first_name': 'Ava', 'last_name': 'Lewis', 'role': 'student', 'password': 'student123'},
+        {'email': 'alex.thompson@student.edumind.com', 'first_name': 'Alex', 'last_name': 'Thompson', 'role': 'student', 'password': 'student123', 'email_verified': True},
+        {'email': 'sophia.martinez@student.edumind.com', 'first_name': 'Sophia', 'last_name': 'Martinez', 'role': 'student', 'password': 'student123', 'email_verified': True},
+        {'email': 'lucas.anderson@student.edumind.com', 'first_name': 'Lucas', 'last_name': 'Anderson', 'role': 'student', 'password': 'student123', 'email_verified': True},
+        {'email': 'olivia.taylor@student.edumind.com', 'first_name': 'Olivia', 'last_name': 'Taylor', 'role': 'student', 'password': 'student123', 'email_verified': True},
+        {'email': 'noah.white@student.edumind.com', 'first_name': 'Noah', 'last_name': 'White', 'role': 'student', 'password': 'student123', 'email_verified': True},
+        {'email': 'emma.harris@student.edumind.com', 'first_name': 'Emma', 'last_name': 'Harris', 'role': 'student', 'password': 'student123', 'email_verified': True},
+        {'email': 'liam.clark@student.edumind.com', 'first_name': 'Liam', 'last_name': 'Clark', 'role': 'student', 'password': 'student123', 'email_verified': True},
+        {'email': 'ava.lewis@student.edumind.com', 'first_name': 'Ava', 'last_name': 'Lewis', 'role': 'student', 'password': 'student123', 'email_verified': True},
         {'email': 'mason.walker@student.edumind.com', 'first_name': 'Mason', 'last_name': 'Walker', 'role': 'student', 'password': 'student123'},
         {'email': 'isabella.hall@student.edumind.com', 'first_name': 'Isabella', 'last_name': 'Hall', 'role': 'student', 'password': 'student123'},
         {'email': 'james.allen@student.edumind.com', 'first_name': 'James', 'last_name': 'Allen', 'role': 'student', 'password': 'student123'},
@@ -76,7 +197,7 @@ def seed_students(users):
     for i, user in enumerate(student_users):
         student = Student(
             user_id=user.id,
-            student_id=f'STU{1000 + i}',
+            student_id=f'{220900000 + i:09d}',
             date_of_birth=datetime(2000 + random.randint(0, 4), random.randint(1, 12), random.randint(1, 28)).date(),
             phone=f'+1-555-{random.randint(100, 999)}-{random.randint(1000, 9999)}',
             address=f'{random.randint(100, 999)} University Ave, Campus {random.randint(1, 5)}',
@@ -121,22 +242,15 @@ def seed_lecturers(users):
     return lecturers
 
 def seed_courses(lecturers):
-    """Create courses."""
+    """Create courses - Diploma programs."""
     print("Seeding Courses...")
     
     courses_data = [
-        {'code': 'CS101', 'name': 'Introduction to Computer Science', 'credits': 3, 'description': 'Fundamental concepts of programming and computer science.'},
-        {'code': 'CS201', 'name': 'Data Structures and Algorithms', 'credits': 4, 'description': 'Study of data structures and algorithm design.'},
-        {'code': 'CS301', 'name': 'Machine Learning Fundamentals', 'credits': 3, 'description': 'Introduction to machine learning algorithms and applications.'},
-        {'code': 'MATH101', 'name': 'Calculus I', 'credits': 4, 'description': 'Limits, derivatives, and integrals.'},
-        {'code': 'MATH201', 'name': 'Linear Algebra', 'credits': 3, 'description': 'Vectors, matrices, and linear transformations.'},
-        {'code': 'ENG101', 'name': 'Introduction to Engineering', 'credits': 3, 'description': 'Basic engineering principles and design.'},
-        {'code': 'BUS101', 'name': 'Introduction to Business', 'credits': 3, 'description': 'Overview of business operations and management.'},
-        {'code': 'PHYS101', 'name': 'Physics I', 'credits': 4, 'description': 'Mechanics, thermodynamics, and waves.'},
-        {'code': 'CS401', 'name': 'Deep Learning', 'credits': 3, 'description': 'Advanced neural networks and deep learning.'},
-        {'code': 'BUS201', 'name': 'Marketing Fundamentals', 'credits': 3, 'description': 'Marketing strategies and consumer behavior.'},
-        {'code': 'MATH301', 'name': 'Discrete Mathematics', 'credits': 3, 'description': 'Logic, set theory, combinatorics.'},
-        {'code': 'CS202', 'name': 'Database Systems', 'credits': 3, 'description': 'Relational databases and SQL.'},
+        {'code': 'DIT', 'name': 'Diploma in Information Technology', 'credits': 120, 'description': 'Comprehensive IT diploma covering programming, databases, web development, networks, and systems analysis.'},
+        {'code': 'DCE', 'name': 'Diploma in Civil Engineering', 'credits': 120, 'description': 'Civil engineering diploma covering mathematics, structural mechanics, construction technology, surveying, and fluid mechanics.'},
+        {'code': 'DBM', 'name': 'Diploma in Business Management', 'credits': 120, 'description': 'Business management diploma covering management principles, accounting, marketing, business law, and entrepreneurship.'},
+        {'code': 'DGD', 'name': 'Diploma in Graphic Design', 'credits': 120, 'description': 'Graphic design diploma covering visual communication, digital illustration, typography, photography, and design theory.'},
+        {'code': 'DES', 'name': 'Diploma in Environmental Science', 'credits': 120, 'description': 'Environmental science diploma covering ecology, environmental management, geology, chemistry, and research methods.'},
     ]
     
     courses = []
@@ -146,8 +260,7 @@ def seed_courses(lecturers):
             name=data['name'],
             credits=data['credits'],
             description=data['description'],
-            lecturer_id=lecturers[i % len(lecturers)].id,
-            semester='Spring 2025',
+            semester='Full Year',
             year=2025,
             is_active=True
         )
@@ -159,57 +272,131 @@ def seed_courses(lecturers):
     return courses
 
 def seed_modules(courses):
-    """Create course modules."""
+    """Create course modules - specific modules for each diploma."""
     print("Seeding Modules...")
     
     modules = []
-    module_titles = [
-        'Introduction and Basics',
-        'Core Concepts',
-        'Advanced Topics',
-        'Practical Applications',
-        'Review and Assessment'
-    ]
+    
+    # Define modules for each course
+    course_modules = {
+        'DIT': [
+            {'title': 'Programming (Java / C#)', 'description': 'Learn programming fundamentals using Java and C# languages, including object-oriented programming concepts.'},
+            {'title': 'Database Development (SQL)', 'description': 'Master database design, implementation, and management using SQL and relational database systems.'},
+            {'title': 'Web Development (HTML, CSS, JavaScript)', 'description': 'Build modern web applications using HTML, CSS, and JavaScript technologies.'},
+            {'title': 'Systems Analysis & Design', 'description': 'Learn to analyze business requirements and design effective information systems.'},
+            {'title': 'Computer Networks', 'description': 'Understand networking concepts, protocols, and infrastructure for modern IT systems.'},
+        ],
+        'DCE': [
+            {'title': 'Engineering Mathematics', 'description': 'Mathematical foundations for civil engineering including calculus, linear algebra, and differential equations.'},
+            {'title': 'Structural Mechanics', 'description': 'Analysis of forces, stresses, and strains in structural elements and systems.'},
+            {'title': 'Construction Technology', 'description': 'Modern construction methods, materials, and project management techniques.'},
+            {'title': 'Surveying', 'description': 'Land surveying techniques, equipment, and measurement principles.'},
+            {'title': 'Fluid Mechanics', 'description': 'Study of fluid behavior, hydraulics, and applications in civil engineering.'},
+        ],
+        'DBM': [
+            {'title': 'Business Management', 'description': 'Fundamentals of managing organizations, leadership, and strategic planning.'},
+            {'title': 'Financial Accounting', 'description': 'Accounting principles, financial statements, and business financial management.'},
+            {'title': 'Marketing Principles', 'description': 'Marketing strategies, consumer behavior, and market analysis techniques.'},
+            {'title': 'Business Law', 'description': 'Legal frameworks governing business operations, contracts, and commercial transactions.'},
+            {'title': 'Entrepreneurship', 'description': 'Starting and managing new ventures, business planning, and innovation.'},
+        ],
+        'DGD': [
+            {'title': 'Visual Communication Design', 'description': 'Principles of visual communication, design thinking, and creative problem-solving.'},
+            {'title': 'Digital Illustration', 'description': 'Digital art creation techniques using industry-standard software and tools.'},
+            {'title': 'Typography', 'description': 'The art and technique of arranging type for effective communication.'},
+            {'title': 'Photography', 'description': 'Photographic techniques, composition, lighting, and digital image processing.'},
+            {'title': 'Design Theory', 'description': 'Theoretical foundations of design, color theory, and design history.'},
+        ],
+        'DES': [
+            {'title': 'Ecology', 'description': 'Study of ecosystems, biodiversity, and interactions between organisms and their environment.'},
+            {'title': 'Environmental Management', 'description': 'Sustainable resource management, environmental policy, and conservation strategies.'},
+            {'title': 'Geology', 'description': 'Earth science, rock formations, geological processes, and natural resource exploration.'},
+            {'title': 'Chemistry', 'description': 'Chemical principles and their applications in environmental science and analysis.'},
+            {'title': 'Research Methods', 'description': 'Scientific research methodology, data collection, analysis, and reporting.'},
+        ],
+    }
     
     for course in courses:
-        for i, title in enumerate(module_titles):
-            module = Module(
-                course_id=course.id,
-                title=f'{course.code} - {title}',
-                description=f'Module {i+1} for {course.name}',
-                order=i+1
-            )
-            db.session.add(module)
-            modules.append(module)
+        if course.code in course_modules:
+            for i, module_data in enumerate(course_modules[course.code]):
+                module = Module(
+                    course_id=course.id,
+                    title=module_data['title'],
+                    description=module_data['description'],
+                    order=i+1
+                )
+                db.session.add(module)
+                modules.append(module)
     
     db.session.commit()
     print(f"  Created {len(modules)} modules")
     return modules
 
+def seed_lecturer_modules(lecturers, modules):
+    """Assign lecturers to modules (many-to-many relationship)."""
+    print("Seeding Lecturer-Module Assignments...")
+    
+    from app.models.lecturer import LecturerModule
+    
+    assignments = []
+    
+    # Get lecturer and module IDs upfront to avoid autoflush issues
+    lecturer_ids = [l.id for l in lecturers]
+    module_ids = [m.id for m in modules]
+    
+    assignment_set = set()  # Track (lecturer_id, module_id) pairs to avoid duplicates
+    
+    # Distribute modules among lecturers
+    for i, module_id in enumerate(module_ids):
+        # Assign 1-2 lecturers per module
+        num_lecturers = random.randint(1, 2)
+        assigned_lecturer_ids = random.sample(lecturer_ids, min(num_lecturers, len(lecturer_ids)))
+        
+        for j, lecturer_id in enumerate(assigned_lecturer_ids):
+            # Check for duplicate
+            key = (lecturer_id, module_id)
+            if key in assignment_set:
+                continue
+            assignment_set.add(key)
+            
+            assignment = LecturerModule(
+                lecturer_id=lecturer_id,
+                module_id=module_id,
+                is_primary=(j == 0)  # First lecturer is primary
+            )
+            db.session.add(assignment)
+            assignments.append(assignment)
+        
+        # Commit every 20 modules to avoid buildup
+        if (i + 1) % 20 == 0:
+            db.session.commit()
+    
+    db.session.commit()
+    print(f"  Created {len(assignments)} lecturer-module assignments")
+    return assignments
+
 def seed_enrollments(students, courses):
-    """Create enrollments."""
+    """Create enrollments - each student enrolled in ONE course only (single-course restriction)."""
     print("Seeding Enrollments...")
     
     enrollments = []
-    statuses = ['active', 'active', 'active', 'completed']
     
-    # Enroll each student in 3-6 courses
-    for student in students:
-        num_courses = random.randint(3, 6)
-        enrolled_courses = random.sample(courses, num_courses)
+    # Enroll each student in exactly 1 course (single-course restriction)
+    for i, student in enumerate(students):
+        # Distribute students across courses evenly
+        course = courses[i % len(courses)]
         
-        for course in enrolled_courses:
-            enrollment = Enrollment(
-                student_id=student.id,
-                course_id=course.id,
-                status=random.choice(statuses),
-                enrolled_at=datetime(2024, random.randint(1, 9), random.randint(1, 28))
-            )
-            db.session.add(enrollment)
-            enrollments.append(enrollment)
+        enrollment = Enrollment(
+            student_id=student.id,
+            course_id=course.id,
+            status='active',
+            enrolled_at=datetime(2024, random.randint(1, 9), random.randint(1, 28))
+        )
+        db.session.add(enrollment)
+        enrollments.append(enrollment)
     
     db.session.commit()
-    print(f"  Created {len(enrollments)} enrollments")
+    print(f"  Created {len(enrollments)} enrollments (1 course per student)")
     return enrollments
 
 def seed_materials(courses, modules, users):
@@ -217,22 +404,48 @@ def seed_materials(courses, modules, users):
     print("Seeding Course Materials...")
     
     materials = []
-    file_types = ['pdf', 'ppt', 'doc', 'txt']
     categories = ['lecture', 'assignment', 'reading', 'notes']
+    
+    # Use actual PDF files that exist in the uploads folder
+    # File paths are relative to static folder: /static/uploads/materials/{course_id}/{filename}
     
     material_count = 0
     for course in courses:
-        # Add 2-3 materials per course
+        # Get modules for this course
+        course_modules = [m for m in modules if m.course_id == course.id]
+        if not course_modules:
+            continue
+            
+        # Add 2-3 materials per course (assigned to modules)
         for i in range(random.randint(2, 3)):
+            # Use actual file that exists or use a placeholder
+            # For course 11, we have 'Introduction_to_INT316D_and_JEE.pdf' in the system
+            if course.id == 11:
+                filename = f'Introduction_to_INT316D_and_JEE.pdf'
+                file_path = f'/static/uploads/materials/{course.id}/{filename}'
+            else:
+                # Generate unique filename
+                filename = f'{course.code.lower()}_material_{i+1}.pdf'
+                file_path = f'/static/uploads/materials/{course.id}/{filename}'
+            
+            # Pick a random module from this course
+            target_module = random.choice(course_modules)
+            
+            # Ensure file exists for downloads
+            # file_path stored as '/static/...', we write under static dir as 'uploads/...'
+            _write_bytes_under_static(
+                file_path.replace("/static/", "", 1),
+                _tiny_pdf_bytes(f"{course.code} demo material {i+1}")
+            )
+
             material = CourseMaterial(
-                course_id=course.id,
-                module_id=modules[random.randint(0, len(modules)-1)].id if random.random() > 0.3 else None,
+                module_id=target_module.id,
                 title=f'{course.code} - {random.choice(categories).title()} {i+1}',
                 description=f'Course material for {course.name}',
-                file_path=f'/uploads/{course.code.lower()}_material_{i+1}.{random.choice(file_types)}',
-                file_name=f'{course.code.lower()}_material_{i+1}.{random.choice(file_types)}',
-                file_type=random.choice(file_types),
-                file_size=random.randint(10000, 5000000),
+                file_path=file_path,
+                file_name=filename,
+                file_type='pdf',
+                file_size=random.randint(50000, 1500000),  # Realistic PDF sizes
                 category=random.choice(categories),
                 uploaded_by=users[0].id,  # Admin uploads
                 is_published=True
@@ -245,7 +458,7 @@ def seed_materials(courses, modules, users):
     print(f"  Created {len(materials)} course materials")
     return materials
 
-def seed_quizzes(courses, users):
+def seed_quizzes(courses, modules, users):
     """Create quizzes."""
     print("Seeding Quizzes...")
     
@@ -259,17 +472,26 @@ def seed_quizzes(courses, users):
     ]
     
     for course in courses:
-        for i, title in enumerate(quiz_titles[:3]):  # 3 quizzes per course
+        # Get modules for this course
+        course_modules = [m for m in modules if m.course_id == course.id]
+        if not course_modules:
+            continue
+            
+        for i, title in enumerate(quiz_titles):  # all quiz templates per course
+            # Pick a random module from this course
+            target_module = random.choice(course_modules)
+            
             quiz = Quiz(
-                course_id=course.id,
+                module_id=target_module.id,
                 title=f'{course.code} - {title}',
                 description=f'{title} for {course.name}',
                 created_by=users[0].id,
-                time_limit=random.choice([15, 30, 45, 60]),
+                time_limit=1,  # fallback when time_limit_seconds is not used elsewhere
+                time_limit_seconds=40,
                 passing_score=random.choice([50, 60, 70]),
-                is_published=random.choice([True, False]),
+                is_published=True,
                 is_ai_generated=False,
-                due_date=datetime(2025, random.randint(1, 6), random.randint(1, 28))
+                due_date=app_now() + timedelta(days=120),
             )
             db.session.add(quiz)
             quizzes.append(quiz)
@@ -278,30 +500,115 @@ def seed_quizzes(courses, users):
     print(f"  Created {len(quizzes)} quizzes")
     return quizzes
 
+
+def seed_assignments(courses, modules, users):
+    """Create module-based assignments with downloadable spec attachments."""
+    print("Seeding Assignments...")
+
+    assignments = []
+    attachment_count = 0
+
+    lecturer_like_user_id = users[0].id if users else None  # admin as uploader/marker when needed
+    uploads_root = _primary_uploads_dir()
+
+    for course in courses:
+        course_modules = [m for m in modules if m.course_id == course.id]
+        if not course_modules:
+            continue
+
+        # 1-2 assignments per course (attached to random modules)
+        for i in range(random.randint(1, 2)):
+            target_module = random.choice(course_modules)
+            assignment = Assignment(
+                module_id=target_module.id,
+                title=f"{course.code} - Assignment {i+1}",
+                description=f"Submit your work for {course.name}.",
+                due_date=app_now() + timedelta(days=30 + i * 7),
+                total_marks=random.choice([50, 75, 100]),
+            )
+            db.session.add(assignment)
+            db.session.flush()  # ensure assignment.id exists for file paths
+
+            # 1-3 spec files per assignment (tiny PDFs so downloads work)
+            for j in range(random.randint(1, 3)):
+                filename = f"{course.code}_assignment_{i+1}_spec_{j+1}.pdf"
+                rel = f"assignments/specs/{assignment.id}/{filename}"
+                _write_bytes_under_uploads(rel, _tiny_pdf_bytes(f"{assignment.title} spec {j+1}"))
+
+                # Store an absolute path (matches assignments routes send_file expectations)
+                abs_path = os.path.join(uploads_root, rel.replace("/", os.sep))
+
+                db.session.add(
+                    AssignmentAttachment(
+                        assignment_id=assignment.id,
+                        file_path=abs_path,
+                        file_name=filename,
+                    )
+                )
+                attachment_count += 1
+
+            assignments.append(assignment)
+
+    db.session.commit()
+    print(f"  Created {len(assignments)} assignments")
+    print(f"  Created {attachment_count} assignment attachments (spec files)")
+    return assignments
+
+
+def seed_assignment_submissions(assignments, students):
+    """Create some student submissions with downloadable files."""
+    print("Seeding Assignment Submissions...")
+
+    submissions = []
+    uploads_root = _primary_uploads_dir()
+
+    # 0-2 submissions per assignment (random students)
+    for assignment in assignments:
+        if not students:
+            break
+        submitters = random.sample(students, k=min(len(students), random.randint(0, 2)))
+        for student in submitters:
+            filename = f"{student.student_id}_submission_{assignment.id}.pdf"
+            rel = f"assignments/{student.id}/{filename}"
+            _write_bytes_under_uploads(rel, _tiny_pdf_bytes(f"Submission {student.student_id} for {assignment.title}"))
+            abs_path = os.path.join(uploads_root, rel.replace("/", os.sep))
+
+            sub = AssignmentSubmission(
+                assignment_id=assignment.id,
+                student_id=student.id,
+                file_path=abs_path,
+                file_name=filename,
+                submitted_at=app_now() - timedelta(days=random.randint(0, 10)),
+                status="submitted",
+            )
+            db.session.add(sub)
+            submissions.append(sub)
+
+    db.session.commit()
+    print(f"  Created {len(submissions)} assignment submissions")
+    return submissions
+
 def seed_quiz_questions(quizzes):
-    """Create quiz questions."""
+    """Create quiz questions (every quiz gets at least five; MC uses five options)."""
     print("Seeding Quiz Questions...")
     
     questions = []
-    question_types = ['multiple_choice', 'true_false', 'short_answer']
+    mc_options_pool = ['Option A', 'Option B', 'Option C', 'Option D', 'Option E']
     
     q_count = 0
     for quiz in quizzes:
-        # Add 5-10 questions per quiz
-        num_questions = random.randint(5, 10)
+        # Fixed count so every seeded quiz reliably has questions
+        num_questions = 6
         
         for i in range(num_questions):
-            q_type = random.choice(question_types)
+            q_type = random.choice(['multiple_choice', 'multiple_choice', 'true_false'])
             
             if q_type == 'multiple_choice':
-                options = json.dumps(['Option A', 'Option B', 'Option C', 'Option D'])
-                correct = random.choice(['Option A', 'Option B', 'Option C', 'Option D'])
-            elif q_type == 'true_false':
+                options = json.dumps(mc_options_pool)
+                correct = random.choice(mc_options_pool)
+            else:
                 options = json.dumps(['True', 'False'])
                 correct = random.choice(['True', 'False'])
-            else:
-                options = None
-                correct = 'algorithm'
             
             question = QuizQuestion(
                 quiz_id=quiz.id,
@@ -354,7 +661,7 @@ def seed_quiz_results(quizzes, students):
     print(f"  Created {len(results)} quiz results")
     return results
 
-def seed_attendance(courses, students, users):
+def seed_attendance(courses, modules, students, users):
     """Create attendance records."""
     print("Seeding Attendance...")
     
@@ -366,13 +673,21 @@ def seed_attendance(courses, students, users):
         date = datetime.now().date() - timedelta(days=days_ago)
         
         for course in courses[:5]:  # First 5 courses
+            # Get modules for this course
+            course_modules = [m for m in modules if m.course_id == course.id]
+            if not course_modules:
+                continue
+                
             # Random 5-8 students per course per day
             num_students = random.randint(5, min(8, len(students)))
             attending_students = random.sample(students, num_students)
             
             for student in attending_students:
+                # Pick a random module from this course
+                target_module = random.choice(course_modules)
+                
                 attendance = Attendance(
-                    course_id=course.id,
+                    module_id=target_module.id,
                     student_id=student.id,
                     date=date,
                     status=random.choice(statuses),
@@ -386,7 +701,7 @@ def seed_attendance(courses, students, users):
     print(f"  Created {len(attendance_records)} attendance records")
     return attendance_records
 
-def seed_marks(courses, students, users):
+def seed_marks(courses, modules, students, users):
     """Create marks/grades."""
     print("Seeding Marks...")
     
@@ -394,6 +709,11 @@ def seed_marks(courses, students, users):
     assessment_types = ['assignment', 'midterm', 'final', 'quiz', 'project']
     
     for course in courses:
+        # Get modules for this course
+        course_modules = [m for m in modules if m.course_id == course.id]
+        if not course_modules:
+            continue
+            
         # 5-8 marks per course
         num_marks = random.randint(5, 8)
         
@@ -404,8 +724,11 @@ def seed_marks(courses, students, users):
             mark_score = random.randint(int(total * 0.4), total)
             percentage = (mark_score / total) * 100
             
+            # Pick a random module from this course
+            target_module = random.choice(course_modules)
+            
             mark = Mark(
-                course_id=course.id,
+                module_id=target_module.id,
                 student_id=student.id,
                 assessment_type=assessment_type,
                 assessment_name=f'{assessment_type.title()} {i+1}',
@@ -569,10 +892,19 @@ def seed_cv_reviews(students):
     statuses = ['pending', 'reviewed', 'needs_revision']
     
     for student in students[:10]:  # First 10 students
+        # Use the same sample PDF for all CVs
+        cv_filename = f'cv_{student.student_id}.pdf'
+        cv_path = f'/static/uploads/cv/{student.id}/{cv_filename}'
+
+        _write_bytes_under_static(
+            cv_path.replace("/static/", "", 1),
+            _tiny_pdf_bytes(f"CV {student.student_id}")
+        )
+
         review = CVReview(
             student_id=student.id,
-            file_path=f'/uploads/cv_{student.student_id}.pdf',
-            file_name=f'cv_{student.student_id}.pdf',
+            file_path=cv_path,
+            file_name=cv_filename,
             job_readiness_score=random.randint(40, 95) if random.random() > 0.3 else None,
             status=random.choice(statuses),
             strengths='Strong technical skills, good communication, proactive learning',
@@ -650,19 +982,25 @@ def main():
         db.create_all()
         print("Database tables verified.")
         
+        # Clear existing data first
+        clear_all_data()
+        
         # Seed all tables
         users = seed_users()
         students = seed_students(users)
         lecturers = seed_lecturers(users)
         courses = seed_courses(lecturers)
         modules = seed_modules(courses)
+        lecturer_modules = seed_lecturer_modules(lecturers, modules)
         enrollments = seed_enrollments(students, courses)
         materials = seed_materials(courses, modules, users)
-        quizzes = seed_quizzes(courses, users)
+        quizzes = seed_quizzes(courses, modules, users)
+        assignments = seed_assignments(courses, modules, users)
+        assignment_submissions = seed_assignment_submissions(assignments, students)
         quiz_questions = seed_quiz_questions(quizzes)
-        quiz_results = seed_quiz_results(quizzes, students)
-        attendance_records = seed_attendance(courses, students, users)
-        marks = seed_marks(courses, students, users)
+        quiz_results = seed_quiz_results(quizzes, students)  # Disabled
+        attendance_records = seed_attendance(courses, modules, students, users)  # Disabled
+        marks = seed_marks(courses, modules, students, users)  # Disabled
         study_plans = seed_study_plans(students, courses)
         study_plan_items = seed_study_plan_items(study_plans)
         chat_sessions = seed_chat_sessions(students, courses)
@@ -680,13 +1018,16 @@ def main():
         print(f"  Lecturers: {len(lecturers)}")
         print(f"  Courses: {len(courses)}")
         print(f"  Modules: {len(modules)}")
+        print(f"  Lecturer-Module Assignments: {len(lecturer_modules)}")
         print(f"  Enrollments: {len(enrollments)}")
         print(f"  Course Materials: {len(materials)}")
         print(f"  Quizzes: {len(quizzes)}")
+        print(f"  Assignments: {len(assignments)}")
+        print(f"  Assignment Submissions: {len(assignment_submissions)}")
         print(f"  Quiz Questions: {len(quiz_questions)}")
-        print(f"  Quiz Results: {len(quiz_results)}")
-        print(f"  Attendance Records: {len(attendance_records)}")
-        print(f"  Marks: {len(marks)}")
+        print(f"  Quiz Results: {len(quiz_results)} (disabled - requires enrollments)")
+        print(f"  Attendance Records: {len(attendance_records)} (disabled - requires enrollments)")
+        print(f"  Marks: {len(marks)} (disabled - requires enrollments)")
         print(f"  Study Plans: {len(study_plans)}")
         print(f"  Study Plan Items: {len(study_plan_items)}")
         print(f"  Chat Sessions: {len(chat_sessions)}")

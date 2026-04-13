@@ -1,6 +1,7 @@
-from datetime import datetime
+from datetime import timedelta
 from flask_login import UserMixin
 from app import db, bcrypt
+from app.utils.app_time import app_now
 
 
 class User(db.Model, UserMixin):
@@ -14,12 +15,66 @@ class User(db.Model, UserMixin):
     last_name = db.Column(db.String(50), nullable=False)
     role = db.Column(db.String(20), nullable=False)  # student, lecturer, admin, career_advisor
     is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=app_now)
+    updated_at = db.Column(db.DateTime, default=app_now, onupdate=app_now)
+    
+    # Notification tracking
+    last_notification_read = db.Column(db.DateTime, nullable=True)
+    
+    # Password reset
+    reset_token = db.Column(db.String(100), nullable=True)
+    reset_token_expires_at = db.Column(db.DateTime, nullable=True)
+    
+    # Email verification
+    email_verified = db.Column(db.Boolean, default=False)
+    email_verification_token = db.Column(db.String(100), nullable=True)
+    email_verification_expires_at = db.Column(db.DateTime, nullable=True)
     
     # Relationships
-    student = db.relationship('Student', backref='user', uselist=False, lazy=True)
-    lecturer = db.relationship('Lecturer', backref='user', uselist=False, lazy=True)
+    student = db.relationship('Student', backref='user', uselist=False, lazy=True, cascade="all, delete-orphan")
+    lecturer = db.relationship('Lecturer', back_populates='user', uselist=False, lazy=True, cascade="all, delete-orphan")
+    
+    def unread_notifications_count(self):
+        """Get count of unread notifications"""
+        from app.models.notification import Notification
+        return Notification.query.filter_by(recipient_id=self.id, is_read=False).count()
+    
+    def get_recent_notifications(self, limit=10):
+        """Get recent notifications for dropdown"""
+        from app.models.notification import Notification
+        return Notification.query.filter_by(recipient_id=self.id).order_by(Notification.created_at.desc()).limit(limit).all()
+    
+    def add_notification(
+        self,
+        type,
+        title,
+        message,
+        priority='normal',
+        sender=None,
+        action_url=None,
+        action_text=None,
+        entity_type=None,
+        entity_id=None,
+        metadata=None,
+    ):
+        """Helper to create notification"""
+        from app.models.notification import Notification
+        import json
+        notif = Notification(
+            recipient_id=self.id,
+            sender_id=sender.id if sender else None,
+            type=type,
+            title=title,
+            message=message,
+            priority=priority,
+            action_url=action_url,
+            action_text=action_text,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            metadata_json=json.dumps(metadata) if metadata else None
+        )
+        db.session.add(notif)
+        return notif
     
     def set_password(self, password):
         """Hash and set the user password."""
@@ -29,12 +84,62 @@ class User(db.Model, UserMixin):
         """Verify the password."""
         return bcrypt.check_password_hash(self.password_hash, password)
     
+    def generate_reset_token(self):
+        """Generate a password reset token."""
+        import secrets
+        self.reset_token = secrets.token_urlsafe(32)
+        self.reset_token_expires_at = app_now() + timedelta(hours=1)
+        return self.reset_token
+    
+    def verify_reset_token(self, token):
+        """Verify a password reset token."""
+        if self.reset_token != token:
+            return False
+        if self.reset_token_expires_at is None or self.reset_token_expires_at < app_now():
+            return False
+        return True
+    
+    def clear_reset_token(self):
+        """Clear the reset token after password reset."""
+        self.reset_token = None
+        self.reset_token_expires_at = None
+    
+    def generate_email_verification_token(self):
+        """Generate an email verification token."""
+        import secrets
+        self.email_verification_token = secrets.token_urlsafe(32)
+        self.email_verification_expires_at = app_now() + timedelta(hours=24)
+        return self.email_verification_token
+    
+    def verify_email_token(self, token):
+        """Verify an email verification token."""
+        if self.email_verification_token != token:
+            return False
+        if self.email_verification_expires_at is None or self.email_verification_expires_at < app_now():
+            return False
+        return True
+    
+    def clear_email_verification_token(self):
+        """Clear the email verification token after verification."""
+        self.email_verification_token = None
+        self.email_verification_expires_at = None
+    
+    def mark_email_verified(self):
+        """Mark email as verified."""
+        self.email_verified = True
+        self.clear_email_verification_token()
+    
     @property
     def full_name(self):
         """Return the user's full name."""
         return f"{self.first_name} {self.last_name}"
     
-    def __repr__(self):
+    @full_name.setter
+    def full_name(self, name):
+        """Set the user's first and last name from a full name."""
+        parts = name.split(' ', 1)
+        self.first_name = parts[0]
+        self.last_name = parts[1] if len(parts) > 1 else ''
         return f'<User {self.email} ({self.role})>'
     
     def to_dict(self):

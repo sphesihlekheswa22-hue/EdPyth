@@ -60,6 +60,24 @@
         </div>
     </div>
 
+    {% if not ai_enabled %}
+    <div class="glass-card rounded-2xl p-4 mb-4 border border-amber-500/20 bg-amber-500/5 flex items-start gap-3">
+        <div class="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+            <i class="bi bi-exclamation-triangle text-amber-400 text-lg"></i>
+        </div>
+        <div class="flex-1">
+            <p class="text-white font-semibold">AI is running in offline fallback mode</p>
+            <p class="text-sm text-slate-300 mt-1">
+                You can still chat, but responses are generated locally (no external AI model connected).
+                To enable full AI, add <code class="px-1.5 py-0.5 rounded bg-black/30">OPENROUTER_API_KEY</code> to your <code class="px-1.5 py-0.5 rounded bg-black/30">.env</code> and restart.
+            </p>
+        </div>
+        <a href="{{ url_for('ai.ai_health') }}" class="text-sm text-amber-300 hover:text-amber-200 underline underline-offset-4">
+            Status
+        </a>
+    </div>
+    {% endif %}
+
     <!-- Messages Area -->
     <div id="messagesContainer" class="flex-1 overflow-y-auto space-y-4 mb-4 px-2 scroll-smooth">
         {% if not messages %}

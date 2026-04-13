@@ -1,5 +1,5 @@
 """
-WSGI config for EduMind AI project on PythonAnywhere.
+WSGI config for EduMind AI project on Fly.io.
 
 It exposes the WSGI callable as a module-level variable named ``application``.
 """
@@ -7,8 +7,8 @@ It exposes the WSGI callable as a module-level variable named ``application``.
 import os
 import sys
 
-# Add your project directory to the path
-project_home = os.path.expanduser("~/App2Python")
+# Set the path to your app directory
+project_home = os.path.dirname(os.path.abspath(__file__))
 if project_home not in sys.path:
     sys.path.insert(0, project_home)
 
@@ -19,6 +19,9 @@ from app import create_app
 
 # Create the Flask application
 application = create_app('production')
+
+# Alias for gunicorn
+app = application
 
 # For debugging (change to False in production)
 application.debug = False

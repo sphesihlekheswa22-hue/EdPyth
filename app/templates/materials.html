@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 
-{% block title %}Course Materials - EduMind AI{% endblock %}
+{% block title %}{{ module.title if module else course.name }} - Materials | EduMind AI{% endblock %}
 
-{% block page_title %}{{ course.name }} - Materials{% endblock %}
+{% block page_title %}{{ course.name }} - {{ module.title if module else 'Materials' }}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -38,16 +38,26 @@
 <!-- Header -->
 <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8 animate-slide-up">
     <div class="flex items-center gap-4">
-        <a href="{{ url_for('courses.detail', course_id=course.id) }}" 
+        <a href="{{ url_for('courses.detail', course_id=course.id) }}"
            class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all text-slate-300 hover:text-white">
             <i class="bi bi-arrow-left"></i>
             Back to Course
         </a>
         <div>
-            <h2 class="font-display text-2xl font-bold text-white">Course Materials</h2>
+            <h2 class="font-display text-2xl font-bold text-white">
+                {% if module %}
+                    {{ module.title }} - Materials
+                {% else %}
+                    Course Materials
+                {% endif %}
+            </h2>
             <p class="text-slate-400 text-sm flex items-center gap-2">
                 <span class="w-2 h-2 rounded-full bg-blue-500"></span>
                 {{ course.code }}
+                {% if module %}
+                    <span class="text-slate-600">•</span>
+                    <span>{{ module.title }}</span>
+                {% endif %}
                 <span class="text-slate-600">•</span>
                 <span>{{ materials|length }} files</span>
             </p>
@@ -65,8 +75,8 @@
             </button>
         </div>
 
-        {% if current_user.role in ['lecturer', 'admin'] %}
-        <a href="{{ url_for('materials.upload_material', course_id=course.id) }}" 
+        {% if current_user.role in ['lecturer', 'admin'] and module %}
+        <a href="{{ url_for('materials.upload_material', module_id=module.id) }}"
            class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl font-semibold text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all hover:-translate-y-0.5">
             <i class="bi bi-upload"></i>
             <span class="hidden sm:inline">Upload</span>
@@ -273,13 +283,17 @@
 <div class="animate-slide-up">
     <div class="bento-item glass-card rounded-2xl p-12 text-center max-w-2xl mx-auto">
         <div class="w-24 h-24 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center relative">
-            <div class="absolute inset-0 rounded-2xl bg-blue-500/10 animate-pulse"></div>
+            <div class="absolute inset-0 rounded-2xl bg-blue-500/10 animate-pulse pointer-events-none"></div>
             <i class="bi bi-folder-x text-5xl text-slate-600 relative z-10"></i>
         </div>
         
         <h3 class="font-display text-2xl font-bold text-white mb-3">No Materials Yet</h3>
         <p class="text-slate-400 mb-6 max-w-md mx-auto">
-            This course doesn't have any materials uploaded yet. 
+            {% if module %}
+                This module doesn't have any materials uploaded yet.
+            {% else %}
+                This course doesn't have any materials uploaded yet.
+            {% endif %}
             {% if current_user.role in ['lecturer', 'admin'] %}
                 Start by uploading your first lecture, assignment, or reading material.
             {% else %}
@@ -287,8 +301,8 @@
             {% endif %}
         </p>
         
-        {% if current_user.role in ['lecturer', 'admin'] %}
-        <a href="{{ url_for('materials.upload_material', course_id=course.id) }}" 
+        {% if current_user.role in ['lecturer', 'admin'] and module %}
+        <a href="{{ url_for('materials.upload_material', module_id=module.id) }}"
            class="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl font-semibold text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all hover:-translate-y-0.5">
             <i class="bi bi-upload"></i>
             Upload First Material

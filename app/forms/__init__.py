@@ -3,12 +3,20 @@ from app.forms.auth_forms import (
     RegistrationForm,
     LoginForm,
     StudentProfileForm,
-    LecturerProfileForm
+    StudentCompleteProfileForm,
+    LecturerProfileForm,
+    ForgotPasswordForm,
+    ResetPasswordForm,
+    OTPVerificationForm
 )
 
 __all__ = [
     'RegistrationForm',
     'LoginForm',
     'StudentProfileForm',
-    'LecturerProfileForm'
+    'StudentCompleteProfileForm',
+    'LecturerProfileForm',
+    'ForgotPasswordForm',
+    'ResetPasswordForm',
+    'OTPVerificationForm'
 ]

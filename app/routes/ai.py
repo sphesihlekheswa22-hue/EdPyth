@@ -2,7 +2,10 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from datetime import datetime
 import json
-import openai
+from app.utils.app_time import app_now, app_today
+import requests
+import re
+import os
 from app import db
 from app.models import (
     ChatSession, ChatMessage, StudyPlan, StudyPlanItem, 
@@ -12,16 +15,210 @@ from flask import current_app
 
 ai_bp = Blueprint('ai', __name__, url_prefix='/ai')
 
+AI_MODEL_DEFAULT = "nvidia/nemotron-3-nano-30b-a3b:free"
+OLLAMA_BASE_URL_DEFAULT = "http://127.0.0.1:11434"
+OLLAMA_MODEL_DEFAULT = "llama3.2"
+
+
+def _ai_enabled() -> bool:
+    # Enabled if either OpenRouter is configured OR Ollama is configured
+    api_key = current_app.config.get("OPENROUTER_API_KEY")
+    if api_key and str(api_key).strip():
+        return True
+    ollama_url = (os.environ.get("OLLAMA_BASE_URL") or "").strip()
+    return bool(ollama_url)
+
+
+def _ai_provider() -> str:
+    """Return active provider: 'ollama' or 'openrouter'."""
+    ollama_url = (os.environ.get("OLLAMA_BASE_URL") or "").strip()
+    if ollama_url:
+        return "ollama"
+    return "openrouter"
+
+
+def _ollama_chat(messages: list[dict], model: str, timeout: int = 180) -> str:
+    """
+    Call Ollama's local chat API.
+    Requires Ollama running locally and the model pulled: `ollama pull <model>`.
+    """
+    base_url = (os.environ.get("OLLAMA_BASE_URL") or OLLAMA_BASE_URL_DEFAULT).rstrip("/")
+    resp = requests.post(
+        url=f"{base_url}/api/chat",
+        headers={"Content-Type": "application/json"},
+        data=json.dumps(
+            {
+                "model": model,
+                "messages": messages,
+                "stream": False,
+            }
+        ),
+        timeout=timeout,
+    )
+    if resp.status_code != 200:
+        raise RuntimeError(f"Ollama HTTP {resp.status_code}: {resp.text}")
+    data = resp.json()
+    msg = (data.get("message") or {})
+    content = msg.get("content")
+    if not content:
+        raise RuntimeError(f"Ollama returned unexpected payload: {data}")
+    return content
+
+
+def _fallback_tutor_response(user_message: str, session: ChatSession | None = None) -> str:
+    """
+    Local, rule-based fallback so the AI pages stay useful even with no API key.
+    This avoids 500s and gives the student actionable next steps.
+    """
+    msg = (user_message or "").strip()
+    msg_l = msg.lower()
+    topic = (getattr(session, "topic", None) or "your subject").strip()
+
+    def _bullet(items: list[str]) -> str:
+        return "\n".join([f"- {i}" for i in items])
+
+    # Very short / empty
+    if not msg:
+        return (
+            "AI is currently running in offline mode.\n\n"
+            f"Tell me what you’re working on in **{topic}** and paste the question or problem statement."
+        )
+
+    # Math-like prompt
+    if re.search(r"[\d][\d\s\+\-\*/\^\(\)=]+", msg) or any(k in msg_l for k in ["solve", "calculate", "equation", "derivative", "integral"]):
+        steps = _bullet(
+            [
+                "Write down what’s given and what you must find.",
+                "Choose the relevant formula/rule (and why it applies).",
+                "Work through algebra carefully (show each step).",
+                "Check units/constraints and verify the final answer.",
+                "If you share your attempt, I’ll pinpoint the exact step where it goes wrong.",
+            ]
+        )
+        return (
+            "AI is currently in **offline mode** (no external model connected), but I can still help you structure the solution.\n\n"
+            "**Step-by-step approach:**\n"
+            f"{steps}\n\n"
+            f"Send the full problem text (and your attempt) and I’ll guide you through it."
+        )
+
+    # “Explain” prompts
+    if any(k in msg_l for k in ["explain", "understand", "what is", "why", "difference between"]):
+        learn = _bullet(
+            [
+                "Definition in one sentence (in your own words).",
+                "A simple example.",
+                "A common mistake/misconception.",
+                "A quick self-check question to confirm understanding.",
+            ]
+        )
+        return (
+            "AI is currently in **offline mode**, but here’s a strong way to learn this topic fast:\n\n"
+            "**How to understand it:**\n"
+            f"{learn}\n\n"
+            f"Tell me the exact concept in **{topic}** and I’ll write the definition + example + self-check."
+        )
+
+    # Study-plan / planning prompts
+    if any(k in msg_l for k in ["study plan", "plan", "schedule", "revise", "revision", "exam"]):
+        tpl = _bullet(
+            [
+                "Week 1: Foundations + summary notes (1 page per topic).",
+                "Week 2: Practice questions daily (timed).",
+                "Week 3: Past papers + fix weak areas.",
+                "Week 4: Full mock exams + revision of mistakes.",
+            ]
+        )
+        return (
+            "AI is currently in **offline mode**, but you can still build a great plan:\n\n"
+            "**A simple 4-week template:**\n"
+            f"{tpl}\n\n"
+            "If you tell me your exam date + topics list, I’ll map it into a day-by-day schedule."
+        )
+
+    # Default helpful response
+    return (
+        "AI is currently running in **offline mode** (no OpenRouter key configured), but I can still help.\n\n"
+        "Send one of these and I’ll respond:\n"
+        "- The exact question/problem\n"
+        "- Your current notes/attempt\n"
+        "- What specifically confuses you\n"
+    )
+
+
+@ai_bp.route('/health')
+def ai_health():
+    """Health check for AI configuration."""
+    api_key = current_app.config.get("OPENROUTER_API_KEY") or ""
+    openrouter_enabled = bool(str(api_key).strip())
+    masked_key = (str(api_key)[:10] + "...") if openrouter_enabled and len(str(api_key)) > 10 else ("***" if openrouter_enabled else None)
+    provider = _ai_provider()
+    enabled = openrouter_enabled or provider == "ollama"
+
+    # Do not 500: allow app to run with AI disabled.
+    return jsonify(
+        {
+            "status": "ok",
+            "ai_enabled": enabled,
+            "provider": provider,
+            "model": (os.environ.get("OLLAMA_MODEL") or OLLAMA_MODEL_DEFAULT) if provider == "ollama" else AI_MODEL_DEFAULT,
+            "api_key_configured": openrouter_enabled,
+            "api_key_masked": masked_key,
+            "message": (
+                "AI is enabled." if enabled else "AI is disabled (no OPENROUTER_API_KEY). Fallback mode is active."
+            ),
+        }
+    )
+
+
+@ai_bp.route('/test')
+def ai_test():
+    """Direct test of OpenRouter API."""
+    api_key = current_app.config.get('OPENROUTER_API_KEY')
+    if not api_key:
+        return jsonify({'error': 'API key not configured'}), 500
+    
+    try:
+        response = requests.post(
+            url="https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            data=json.dumps({
+                "model": "nvidia/nemotron-3-nano-30b-a3b:free",
+                "messages": [{"role": "user", "content": "Say hello in one sentence."}],
+                "max_tokens": 100,
+                "reasoning": {"enabled": False}
+            }),
+            timeout=30
+        )
+        
+        return jsonify({
+            'status_code': response.status_code,
+            'response': response.json()
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 def get_ai_client():
-    """Get NVIDIA AI client."""
-    api_key = current_app.config.get('NVIDIA_API_KEY')
-    if not api_key:
+    """Get AI client configuration for OpenRouter or Ollama."""
+    provider = _ai_provider()
+    if provider == "ollama":
+        model = (os.environ.get("OLLAMA_MODEL") or OLLAMA_MODEL_DEFAULT).strip()
+        base_url = (os.environ.get("OLLAMA_BASE_URL") or OLLAMA_BASE_URL_DEFAULT).strip()
+        if not base_url:
+            return None
+        current_app.logger.info(f"AI: Using Ollama at {base_url} model={model}")
+        return {"provider": "ollama", "base_url": base_url, "model": model}
+
+    api_key = current_app.config.get("OPENROUTER_API_KEY")
+    if not api_key or not str(api_key).strip():
+        current_app.logger.error("AI: OPENROUTER_API_KEY not configured")
         return None
-    return openai.OpenAI(
-        base_url="https://integrate.api.nvidia.com/v1",
-        api_key=api_key
-    )
+    current_app.logger.info("AI: OpenRouter API client initialized successfully")
+    return {"provider": "openrouter", "api_key": api_key, "base_url": "https://openrouter.ai/api/v1", "model": AI_MODEL_DEFAULT}
 
 
 @ai_bp.route('/chat')
@@ -38,7 +235,7 @@ def chat():
     sessions = ChatSession.query.filter_by(student_id=student.id)\
         .order_by(ChatSession.updated_at.desc()).limit(10).all()
     
-    return render_template('ai_chat.html', sessions=sessions)
+    return render_template('ai_chat.html', sessions=sessions, ai_enabled=_ai_enabled())
 
 
 @ai_bp.route('/chat/new', methods=['POST'])
@@ -102,7 +299,7 @@ def chat_session(session_id):
     courses = [e.course for e in enrollments]
     
     return render_template('ai_chat_session.html', session=session, 
-                          messages=messages, sessions=sessions, courses=courses)
+                          messages=messages, sessions=sessions, courses=courses, ai_enabled=_ai_enabled())
 
 
 @ai_bp.route('/chat/<int:session_id>/send', methods=['POST'])
@@ -152,17 +349,49 @@ def send_message(session_id):
     client = get_ai_client()
     if not client:
         # Fallback response if no API key
-        ai_response = "I'm currently unavailable. Please configure your NVIDIA API key in the system settings."
+        current_app.logger.warning("AI: No client available - API key missing or invalid")
+        ai_response = _fallback_tutor_response(user_message, session=session)
     else:
         try:
-            response = client.chat.completions.create(
-                model="nvidia/nemotron-3-super-120b-a12b",
-                messages=openai_messages,
-                max_tokens=500
-            )
-            ai_response = response.choices[0].message.content
+            if client.get("provider") == "ollama":
+                ai_response = _ollama_chat(openai_messages, model=client["model"], timeout=180)
+            else:
+                current_app.logger.info(f"AI: Sending request to OpenRouter API with model {client.get('model')}")
+                response = requests.post(
+                    url="https://openrouter.ai/api/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {client['api_key']}",
+                        "Content-Type": "application/json",
+                    },
+                    data=json.dumps({
+                        "model": client.get("model") or AI_MODEL_DEFAULT,
+                        "messages": openai_messages,
+                        "max_tokens": 500,
+                        "reasoning": {"enabled": False}
+                    }),
+                    timeout=30
+                )
+                if response.status_code != 200:
+                    current_app.logger.error(f"AI: HTTP error {response.status_code}: {response.text}")
+                    ai_response = f"AI service returned error {response.status_code}. Please try again later."
+                else:
+                    response_data = response.json()
+                    if 'error' in response_data:
+                        current_app.logger.error(f"AI: API returned error: {response_data['error']}")
+                        ai_response = f"AI service error: {response_data['error'].get('message', 'Unknown error')}"
+                    elif 'choices' in response_data and len(response_data['choices']) > 0:
+                        message = response_data['choices'][0]['message']
+                        ai_response = message.get('content') or message.get('reasoning', 'No response generated')
+                        if not ai_response or ai_response == 'No response generated':
+                            ai_response = "I received your message but couldn't generate a response. Please try again."
+                    else:
+                        current_app.logger.error(f"AI: Unexpected response format: {response_data}")
+                        ai_response = "I apologize, but I received an unexpected response. Please try again."
+                    current_app.logger.info("AI: Received response from OpenRouter API successfully")
         except Exception as e:
-            ai_response = f"I apologize, but I encountered an error: {str(e)}. Please try again later."
+            current_app.logger.error(f"AI: OpenRouter API error: {str(e)}")
+            # Fall back to offline tutor response so user still gets value.
+            ai_response = _fallback_tutor_response(user_message, session=session)
     
     # Save AI response
     ai_msg = ChatMessage(
@@ -173,7 +402,7 @@ def send_message(session_id):
     db.session.add(ai_msg)
     
     # Update session
-    session.updated_at = datetime.utcnow()
+    session.updated_at = app_now()
     
     db.session.commit()
     
@@ -199,7 +428,64 @@ def summarize_material(material_id):
     
     # For now, return a placeholder (would need to read file content)
     flash('Summary feature requires file content extraction. This feature is under development.', 'info')
-    return redirect(url_for('materials.list_materials', course_id=material.course_id))
+    return redirect(url_for('materials.list_materials', module_id=material.module_id))
+
+
+@ai_bp.route('/study-plan/')
+@login_required
+def study_plans_index():
+    """List all study plans for the student."""
+    if current_user.role != 'student':
+        flash('Access denied.', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    student = Student.query.filter_by(user_id=current_user.id).first()
+    plans = StudyPlan.query.filter_by(student_id=student.id)\
+        .order_by(StudyPlan.created_at.desc()).all()
+    
+    return render_template('student/study_plans_list.html', plans=plans)
+
+
+@ai_bp.route('/study-plan/tasks')
+@login_required
+def study_plan_tasks():
+    """View all study tasks across all plans."""
+    if current_user.role != 'student':
+        flash('Access denied.', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    student = Student.query.filter_by(user_id=current_user.id).first()
+    plans = StudyPlan.query.filter_by(student_id=student.id).all()
+    plan_ids = [p.id for p in plans]
+    
+    items = StudyPlanItem.query.filter(StudyPlanItem.study_plan_id.in_(plan_ids))\
+        .order_by(StudyPlanItem.order).all()
+    
+    return render_template('student/study_plan_tasks.html', items=items)
+
+
+@ai_bp.route('/study-plan/schedule')
+@login_required
+def study_plan_schedule():
+    """View study plan tasks in a schedule/calendar view."""
+    if current_user.role != 'student':
+        flash('Access denied.', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    student = Student.query.filter_by(user_id=current_user.id).first()
+    plans = StudyPlan.query.filter_by(student_id=student.id).all()
+    plan_ids = [p.id for p in plans]
+    
+    items = StudyPlanItem.query.filter(StudyPlanItem.study_plan_id.in_(plan_ids))\
+        .filter(StudyPlanItem.due_date.isnot(None))\
+        .order_by(StudyPlanItem.due_date).all()
+    
+    from collections import defaultdict
+    schedule = defaultdict(list)
+    for item in items:
+        schedule[item.due_date].append(item)
+    
+    return render_template('student/study_plan_schedule.html', schedule=dict(schedule))
 
 
 @ai_bp.route('/study-plan/generate', methods=['POST'])
@@ -236,8 +522,8 @@ def generate_study_plan():
         title=f"Study Plan - {course.name if course else 'General'}",
         description="AI-generated personalized study plan",
         is_ai_generated=True,
-        start_date=datetime.utcnow().date(),
-        end_date=datetime.utcnow().date()
+        start_date=app_today(),
+        end_date=app_today()
     )
     
     db.session.add(plan)
@@ -260,13 +546,30 @@ Week 2:
 
 Make it practical and focused on key topics."""
             
-            response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=1000
-            )
-            
-            plan_content = response.choices[0].message.content
+            if client.get("provider") == "ollama":
+                current_app.logger.info("AI: Generating study plan with Ollama")
+                plan_content = _ollama_chat([{"role": "user", "content": prompt}], model=client["model"], timeout=240)
+            else:
+                current_app.logger.info("AI: Generating study plan with OpenRouter")
+                response = requests.post(
+                    url="https://openrouter.ai/api/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {client['api_key']}",
+                        "Content-Type": "application/json",
+                    },
+                    data=json.dumps({
+                        "model": client.get("model") or AI_MODEL_DEFAULT,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "max_tokens": 1000,
+                        "reasoning": {"enabled": False}
+                    }),
+                    timeout=30
+                )
+                response_data = response.json()
+                if 'choices' in response_data and len(response_data['choices']) > 0:
+                    plan_content = response_data['choices'][0]['message']['content']
+                else:
+                    plan_content = None
             
             # Parse and create items
             lines = plan_content.split('\n')
@@ -334,7 +637,8 @@ def view_study_plan(plan_id):
     items = StudyPlanItem.query.filter_by(study_plan_id=plan_id)\
         .order_by(StudyPlanItem.order).all()
     
-    return render_template('study_plan.html', plan=plan, items=items)
+    from datetime import date
+    return render_template('student/study_plan.html', plan=plan, items=items, now=date.today())
 
 
 @ai_bp.route('/study-plan/<int:item_id>/complete', methods=['POST'])
@@ -352,7 +656,7 @@ def complete_study_item(item_id):
         return jsonify({'error': 'Access denied'}), 403
     
     item.status = 'completed'
-    item.completed_at = datetime.utcnow()
+    item.completed_at = app_now()
     db.session.commit()
     
     flash('Item marked as complete!', 'success')

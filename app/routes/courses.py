@@ -1,6 +1,8 @@
+from datetime import datetime
 from typing import List, Optional, Union
+from app.utils.app_time import app_now, app_today
 from flask import (
-    Blueprint, render_template, redirect, url_for, 
+    Blueprint, render_template, redirect, url_for,
     flash, request, abort, current_app
 )
 from flask_login import login_required, current_user
@@ -8,6 +10,7 @@ from http import HTTPStatus
 
 from app import db
 from app.models import Course, Module, Enrollment, Student, Lecturer, CourseMaterial, Quiz
+from app.models.lecturer import LecturerModule
 from app.forms.auth_forms import FlaskForm, StringField, TextAreaField, IntegerField, SubmitField
 from wtforms.validators import DataRequired, Optional as OptionalValidator
 
@@ -38,28 +41,17 @@ def get_course_or_404(course_id: int) -> Course:
     return Course.query.get_or_404(course_id)
 
 
-def check_course_permission(course: Course, action: str = 'view') -> Optional[Lecturer]:
+def check_course_edit_permission(course: Course) -> bool:
     """
-    Verify user has permission for course action.
-    Returns lecturer object if applicable.
+    Verify user has permission to edit course structure.
+    Only admins can edit courses.
+    Lecturers manage modules, not courses.
     """
     if current_user.role == 'admin':
-        return None
+        return True
     
-    if current_user.role == 'lecturer':
-        lecturer: Lecturer = Lecturer.query.filter_by(
-            user_id=current_user.id
-        ).first_or_404()
-        
-        if course.lecturer_id != lecturer.id:
-            abort(HTTPStatus.FORBIDDEN, 'Not authorized for this course')
-        
-        return lecturer
-    
-    if action in ['edit', 'delete', 'create_module']:
-        abort(HTTPStatus.FORBIDDEN)
-    
-    return None
+    # Lecturers cannot edit course-level details
+    return False
 
 
 def get_student_enrollment(course_id: int) -> tuple:
@@ -108,13 +100,13 @@ def index() -> str:
         })
         
     elif current_user.role == 'lecturer':
+        # Lecturers see courses where they teach at least one module
         lecturer: Lecturer = Lecturer.query.filter_by(
             user_id=current_user.id
         ).first_or_404()
         
-        teaching_courses: List[Course] = Course.query.filter_by(
-            lecturer_id=lecturer.id
-        ).order_by(Course.created_at.desc()).all()
+        # Get courses through module assignments
+        teaching_courses: List[Course] = lecturer.get_teaching_courses()
         
         context.update({
             'courses': teaching_courses,
@@ -142,28 +134,60 @@ def detail(course_id: int) -> str:
     
     is_enrolled: bool = False
     enrollment: Optional[Enrollment] = None
+    active_enrollment_other_course: Optional[Enrollment] = None
+    active_enrolled_course: Optional[Course] = None
     
     if current_user.role == 'student':
         _, enrollment = get_student_enrollment(course_id)
         is_enrolled = enrollment is not None and enrollment.status == 'active'
         
+        # Check for active enrollment in another course (for single-course restriction)
+        if not is_enrolled:
+            student: Student = Student.query.filter_by(
+                user_id=current_user.id
+            ).first()
+            if student:
+                active_enrollment_other_course = Enrollment.query.filter_by(
+                    student_id=student.id,
+                    status='active'
+                ).first()
+                if active_enrollment_other_course:
+                    active_enrolled_course = Course.query.get(
+                        active_enrollment_other_course.course_id
+                    )
+        
+        # For non-enrolled students, only show active courses with limited content
         if not is_enrolled and not course.is_active:
-            abort(HTTPStatus.FORBIDDEN, 'Course not available')
+            # Show course page but hide restricted content
+            pass
     
     # Get modules ordered
     modules: List[Module] = Module.query.filter_by(
         course_id=course_id
     ).order_by(Module.order).all()
     
-    # Get materials count
-    materials_count: int = db.session.query(CourseMaterial).filter_by(
-        course_id=course_id, is_published=True
-    ).count() if hasattr(CourseMaterial, 'query') else 0
+    # Get module-level content counts
+    materials_count: int = 0
+    quizzes_count: int = 0
     
-    # Get quizzes count
-    quizzes_count: int = db.session.query(Quiz).filter_by(
-        course_id=course_id, is_published=True
-    ).count() if hasattr(Quiz, 'query') else 0
+    for module in modules:
+        materials_count += len([m for m in module.materials if m.is_published])
+        quizzes_count += len([q for q in module.quizzes if q.is_published])
+    
+    # Lecturer-specific: pick a sensible default module (assigned to the lecturer) for instructor tools
+    lecturer_default_module = None
+    if current_user.role == 'lecturer':
+        lecturer = Lecturer.query.filter_by(user_id=current_user.id).first()
+        if lecturer:
+            lecturer_default_module = (
+                Module.query.join(LecturerModule, LecturerModule.module_id == Module.id)
+                .filter(LecturerModule.lecturer_id == lecturer.id, Module.course_id == course_id)
+                .order_by(Module.order)
+                .first()
+            )
+
+    # Get lecturers teaching this course
+    lecturers = course.get_lecturers()
     
     return render_template(
         'course_detail.html',
@@ -172,7 +196,10 @@ def detail(course_id: int) -> str:
         enrollment=enrollment,
         modules=modules,
         materials_count=materials_count,
-        quizzes_count=quizzes_count
+        quizzes_count=quizzes_count,
+        lecturers=lecturers,
+        active_enrolled_course=active_enrolled_course,
+        lecturer_default_module=lecturer_default_module
     )
 
 
@@ -180,14 +207,8 @@ def detail(course_id: int) -> str:
 @login_required
 def create() -> Union[str, redirect]:
     """Create new course."""
-    if current_user.role not in ['lecturer', 'admin']:
+    if current_user.role != 'admin':
         abort(HTTPStatus.FORBIDDEN)
-    
-    lecturer: Optional[Lecturer] = None
-    if current_user.role == 'lecturer':
-        lecturer = Lecturer.query.filter_by(
-            user_id=current_user.id
-        ).first_or_404()
     
     form = CourseForm()
     
@@ -199,15 +220,9 @@ def create() -> Union[str, redirect]:
                 description=form.description.data.strip() if form.description.data else None,
                 credits=form.credits.data or 3,
                 semester=form.semester.data.strip() if form.semester.data else None,
-                year=form.year.data or datetime.utcnow().year,
-                lecturer_id=lecturer.id if lecturer else None
+                year=form.year.data or app_today().year,
+                # REMOVED: lecturer_id - courses don't have single lecturers
             )
-            
-            # Admin can assign different lecturer
-            if current_user.role == 'admin':
-                lecturer_id: Optional[str] = request.form.get('lecturer_id')
-                if lecturer_id:
-                    course.lecturer_id = int(lecturer_id)
             
             db.session.add(course)
             db.session.commit()
@@ -220,16 +235,10 @@ def create() -> Union[str, redirect]:
             current_app.logger.error(f'Course creation error: {str(e)}')
             flash('Error creating course. Please try again.', 'danger')
     
-    # Get lecturers for admin dropdown
-    lecturers: List[Lecturer] = []
-    if current_user.role == 'admin':
-        lecturers = Lecturer.query.join(User).order_by(User.last_name).all()
-    
     return render_template(
         'course_form.html',
         form=form,
-        action='Create',
-        lecturers=lecturers
+        action='Create'
     )
 
 
@@ -238,7 +247,9 @@ def create() -> Union[str, redirect]:
 def edit(course_id: int) -> Union[str, redirect]:
     """Edit existing course."""
     course: Course = get_course_or_404(course_id)
-    check_course_permission(course, action='edit')
+    
+    if not check_course_edit_permission(course):
+        abort(HTTPStatus.FORBIDDEN)
     
     form = CourseForm(obj=course)
     
@@ -249,7 +260,7 @@ def edit(course_id: int) -> Union[str, redirect]:
             course.description = form.description.data.strip() if form.description.data else None
             course.credits = form.credits.data or 3
             course.semester = form.semester.data.strip() if form.semester.data else None
-            course.year = form.year.data or datetime.utcnow().year
+            course.year = form.year.data or app_today().year
             
             db.session.commit()
             
@@ -283,7 +294,19 @@ def enroll(course_id: int) -> redirect:
     ).first_or_404()
     
     try:
-        # Check existing enrollment
+        # Check for existing active enrollment in ANY course (single-course restriction)
+        active_enrollment: Optional[Enrollment] = Enrollment.query.filter_by(
+            student_id=student.id,
+            status='active'
+        ).first()
+        
+        if active_enrollment and active_enrollment.course_id != course_id:
+            # Student already enrolled in a different course
+            enrolled_course: Course = Course.query.get(active_enrollment.course_id)
+            flash(f'You are already enrolled in "{enrolled_course.name}". Please cancel your current enrollment before enrolling in a new course.', 'warning')
+            return redirect(url_for('courses.detail', course_id=course_id))
+        
+        # Check existing enrollment in THIS course
         existing: Optional[Enrollment] = Enrollment.query.filter_by(
             student_id=student.id,
             course_id=course_id
@@ -294,8 +317,12 @@ def enroll(course_id: int) -> redirect:
                 flash('You are already enrolled in this course.', 'info')
             elif existing.status == 'dropped':
                 existing.status = 'active'
-                existing.enrolled_at = datetime.utcnow()
+                existing.enrolled_at = app_now()
                 db.session.commit()
+                
+                # Create module progress records for new enrollment
+                _create_module_progress_records(existing)
+                
                 flash('Re-enrolled successfully!', 'success')
             else:  # completed
                 flash('You have completed this course. Contact admin to re-enroll.', 'warning')
@@ -307,6 +334,10 @@ def enroll(course_id: int) -> redirect:
             )
             db.session.add(enrollment)
             db.session.commit()
+            
+            # Create module progress records
+            _create_module_progress_records(enrollment)
+            
             flash(f'Successfully enrolled in {course.name}!', 'success')
             
     except Exception as e:
@@ -315,6 +346,23 @@ def enroll(course_id: int) -> redirect:
         flash('Error enrolling in course. Please try again.', 'danger')
     
     return redirect(url_for('courses.detail', course_id=course_id))
+
+
+def _create_module_progress_records(enrollment: Enrollment):
+    """Create progress records for all modules in the course."""
+    from app.models.student_module_progress import StudentModuleProgress
+    
+    modules = Module.query.filter_by(course_id=enrollment.course_id).all()
+    for module in modules:
+        progress = StudentModuleProgress(
+            student_id=enrollment.student_id,
+            module_id=module.id,
+            enrollment_id=enrollment.id,
+            completion_status='not_started'
+        )
+        db.session.add(progress)
+    
+    db.session.commit()
 
 
 @courses_bp.route('/<int:course_id>/unenroll', methods=['POST'])
@@ -351,41 +399,307 @@ def unenroll(course_id: int) -> redirect:
     return redirect(url_for('courses.detail', course_id=course_id))
 
 
+@courses_bp.route('/modules')
+@login_required
+def all_modules():
+    """List all modules for enrolled courses - student view."""
+    if current_user.role != 'student':
+        return redirect(url_for('courses.index'))
+
+    student: Student = Student.query.filter_by(
+        user_id=current_user.id
+    ).first_or_404()
+
+    enrollments: List[Enrollment] = Enrollment.query.filter_by(
+        student_id=student.id, status='active'
+    ).all()
+
+    course_ids: List[int] = [e.course_id for e in enrollments]
+
+    modules: List[Module] = Module.query.filter(
+        Module.course_id.in_(course_ids)
+    ).order_by(Module.course_id, Module.order).all()
+
+    return render_template('modules.html', modules=modules)
+
+
+@courses_bp.route('/modules/<int:module_id>')
+@login_required
+def module_hub(module_id: int):
+    """
+    Module hub page.
+    
+    Clicking a module should take the user to module-scoped content (assignments/quizzes/materials),
+    not back to the course page.
+    """
+    from app.utils.access_control import require_module_access
+    from app.models import Assignment, Quiz, CourseMaterial
+
+    ctx = require_module_access(module_id)
+    module = ctx.module
+    course = ctx.course
+
+    # Role-based edit capability: lecturers/admins can manage module content.
+    can_edit = current_user.role in ["admin", "lecturer"]
+
+    assignments_count = Assignment.query.filter_by(module_id=module_id).count()
+    quizzes_count = Quiz.query.filter_by(module_id=module_id).count()
+    materials_count = CourseMaterial.query.filter_by(module_id=module_id).count()
+
+    return render_template(
+        "module_hub.html",
+        course=course,
+        module=module,
+        can_edit=can_edit,
+        assignments_count=assignments_count,
+        quizzes_count=quizzes_count,
+        materials_count=materials_count,
+    )
+
+
+@courses_bp.route('/modules/content-management')
+@login_required
+def module_content_management() -> str:
+    """
+    Lecturer/Admin hub for module-level content management.
+    Lecturers only see modules they are assigned to.
+    """
+    if current_user.role not in ['lecturer', 'admin']:
+        abort(HTTPStatus.FORBIDDEN)
+
+    modules: List[Module] = []
+    if current_user.role == 'admin':
+        modules = Module.query.order_by(Module.course_id, Module.order).all()
+    else:
+        lecturer: Lecturer = Lecturer.query.filter_by(user_id=current_user.id).first_or_404()
+        modules = lecturer.get_assigned_modules()
+        # Ensure stable ordering (by course then module order)
+        modules = sorted(modules, key=lambda m: (m.course_id or 0, m.order or 0, m.id))
+
+    # Group modules by course for nicer UI
+    courses_map: dict[int, dict] = {}
+    for m in modules:
+        course = m.course
+        if not course:
+            continue
+        if course.id not in courses_map:
+            courses_map[course.id] = {"course": course, "modules": []}
+        courses_map[course.id]["modules"].append(m)
+
+    grouped = list(courses_map.values())
+    grouped.sort(key=lambda x: (x["course"].name or "", x["course"].code or ""))
+
+    return render_template('lecturer/module_content_management.html', grouped=grouped)
+
+
+@courses_bp.route('/materials')
+@login_required
+def all_materials():
+    """List all materials for enrolled courses - student view."""
+    if current_user.role != 'student':
+        return redirect(url_for('courses.index'))
+
+    student: Student = Student.query.filter_by(
+        user_id=current_user.id
+    ).first_or_404()
+
+    enrollments: List[Enrollment] = Enrollment.query.filter_by(
+        student_id=student.id, status='active'
+    ).all()
+
+    course_ids: List[int] = [e.course_id for e in enrollments]
+
+    modules: List[Module] = Module.query.filter(
+        Module.course_id.in_(course_ids)
+    ).all()
+
+    materials = []
+    for module in modules:
+        for material in module.materials:
+            if material.is_published:
+                materials.append({
+                    'material': material,
+                    'module': module,
+                    'course': module.course
+                })
+
+    return render_template('materials_all.html', materials=materials)
+
+
 @courses_bp.route('/<int:course_id>/modules/create', methods=['GET', 'POST'])
 @login_required
 def create_module(course_id: int) -> Union[str, redirect]:
     """Create module for course."""
-    course: Course = get_course_or_404(course_id)
-    check_course_permission(course, action='create_module')
     
+    course: Course = get_course_or_404(course_id)
+    
+    # Check permission - only admins or assigned lecturers can create modules
+    can_edit = False
+    if current_user.role == 'admin':
+        can_edit = True
+    elif current_user.role == 'lecturer':
+        # Lecturers can create modules if they're teaching this course
+        lecturer = Lecturer.query.filter_by(user_id=current_user.id).first_or_404()
+        if lecturer.is_assigned_to_course(course_id):
+            can_edit = True
+    
+    if not can_edit:
+        flash('Permission denied: You cannot create modules for this course.', 'danger')
+        return redirect(url_for('courses.detail', course_id=course_id))
+    
+    # Get existing modules
+    existing_modules: List[Module] = Module.query.filter_by(
+        course_id=course_id
+    ).order_by(Module.order).all()
+    
+    # Calculate next order
+    last_module: Optional[Module] = Module.query.filter_by(
+        course_id=course_id
+    ).order_by(Module.order.desc()).first()
+    last_order = last_module.order if last_module and last_module.order is not None else 0
+    next_order: int = last_order + 1
+    
+    # Initialize form
     form = ModuleForm()
     
-    # Set default order
-    if request.method == 'GET':
-        last_module: Optional[Module] = Module.query.filter_by(
-            course_id=course_id
-        ).order_by(Module.order.desc()).first()
+    # Handle POST - use request.form directly for more control
+    if request.method == 'POST':
+        current_app.logger.info(f'POST REQUEST - Form data: {dict(request.form)}')
         
-        form.order.data = (last_module.order + 1) if last_module else 1
+        # Get form data directly from request
+        title = request.form.get('title', '').strip()
+        description = request.form.get('description', '').strip()
+        
+        if not title:
+            flash('Module title is required!', 'danger')
+            current_app.logger.error('ERROR: No title provided')
+        else:
+            try:
+                # Get position type from request
+                position_type = request.form.get('position_type', 'manual')
+                relative_module_id = request.form.get('relative_module')
+                
+                # Determine order based on position_type (integer ordering only)
+                # NOTE: Module.order is an Integer column, so we shift/reindex instead of using fractional values.
+                if position_type == 'auto':
+                    order = next_order
+                elif position_type == 'first':
+                    order = 1
+                    for mod in existing_modules:
+                        mod.order = (mod.order or 0) + 1
+                elif position_type in ['after', 'before'] and relative_module_id:
+                    ref_module = Module.query.get(int(relative_module_id))
+                    if ref_module and ref_module.order is not None:
+                        if position_type == 'after':
+                            order = ref_module.order + 1
+                        else:
+                            order = max(1, ref_module.order)
+                        # Shift modules at/after insertion point
+                        for mod in existing_modules:
+                            if mod.id == ref_module.id and position_type == 'after':
+                                continue
+                            if mod.order is not None and mod.order >= order:
+                                mod.order += 1
+                    else:
+                        order = next_order
+                else:
+                    # Manual order from form (sanitize to integer)
+                    order_val = request.form.get('order', '')
+                    order = int(order_val) if order_val.isdigit() else next_order
+                    if order < 1:
+                        order = 1
+                    for mod in existing_modules:
+                        if mod.order is not None and mod.order >= order:
+                            mod.order += 1
+                
+                module = Module(
+                    course_id=course_id,
+                    title=title,
+                    description=description if description else None,
+                    order=order
+                )
+                
+                db.session.add(module)
+                db.session.commit()
+                
+                # If lecturer created module, auto-assign them to it
+                if current_user.role == 'lecturer':
+                    lecturer = Lecturer.query.filter_by(user_id=current_user.id).first()
+                    if lecturer:
+                        lecturer.assign_to_module(module.id, is_primary=True)
+                        db.session.commit()
+                
+                flash(f'Module "{module.title}" created successfully!', 'success')
+                return redirect(url_for('courses.detail', course_id=course_id))
+                
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(f'Module creation error: {str(e)}')
+                flash(f'Error creating module: {str(e)}', 'danger')
     
-    if form.validate_on_submit():
-        try:
-            module = Module(
-                course_id=course_id,
-                title=form.title.data.strip(),
-                description=form.description.data.strip() if form.description.data else None,
-                order=form.order.data or 0
-            )
-            
-            db.session.add(module)
+    # Set default order for GET request
+    form.order.data = next_order
+    
+    return render_template('module_form.html', 
+                         form=form, 
+                         course=course, 
+                         existing_modules=existing_modules, 
+                         next_order=next_order)
+
+
+@courses_bp.route('/modules/<int:module_id>/assign-lecturer', methods=['POST'])
+@login_required
+def assign_lecturer_to_module(module_id: int) -> redirect:
+    """Assign a lecturer to a module."""
+    if current_user.role != 'admin':
+        abort(HTTPStatus.FORBIDDEN)
+    
+    module = Module.query.get_or_404(module_id)
+    lecturer_id = request.form.get('lecturer_id')
+    is_primary = request.form.get('is_primary') == 'on'
+    
+    if not lecturer_id:
+        flash('Please select a lecturer.', 'danger')
+        return redirect(url_for('courses.detail', course_id=module.course_id))
+    
+    try:
+        lecturer = Lecturer.query.get_or_404(int(lecturer_id))
+        
+        if lecturer.assign_to_module(module.id, is_primary=is_primary):
             db.session.commit()
+            flash(f'{lecturer.full_name} assigned to module successfully!', 'success')
+        else:
+            flash('Lecturer is already assigned to this module.', 'info')
             
-            flash(f'Module "{module.title}" created!', 'success')
-            return redirect(url_for('courses.detail', course_id=course_id))
-            
-        except Exception as e:
-            db.session.rollback()
-            current_app.logger.error(f'Module creation error: {str(e)}')
-            flash('Error creating module.', 'danger')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Lecturer assignment error: {str(e)}')
+        flash('Error assigning lecturer.', 'danger')
     
-    return render_template('module_form.html', form=form, course=course)
+    return redirect(url_for('courses.detail', course_id=module.course_id))
+
+
+@courses_bp.route('/modules/<int:module_id>/remove-lecturer/<int:lecturer_id>', methods=['POST'])
+@login_required
+def remove_lecturer_from_module(module_id: int, lecturer_id: int) -> redirect:
+    """Remove a lecturer from a module."""
+    if current_user.role != 'admin':
+        abort(HTTPStatus.FORBIDDEN)
+    
+    module = Module.query.get_or_404(module_id)
+    
+    try:
+        lecturer = Lecturer.query.get_or_404(lecturer_id)
+        
+        if lecturer.unassign_from_module(module.id):
+            db.session.commit()
+            flash(f'{lecturer.full_name} removed from module.', 'success')
+        else:
+            flash('Lecturer was not assigned to this module.', 'info')
+            
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Lecturer removal error: {str(e)}')
+        flash('Error removing lecturer.', 'danger')
+    
+    return redirect(url_for('courses.detail', course_id=module.course_id))

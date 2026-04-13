@@ -2,80 +2,1092 @@
 
 {% block title %}EduMind AI - Smart Learning Management System{% endblock %}
 
+{% block meta_description %}AI-powered Learning Management System with personalized study plans, intelligent tutoring, and career development tools.{% endblock %}
+
 {% block auth_content %}
+
+<!-- ============================================
+     EDUMIND AI - PREMIUM LANDING PAGE
+     Production-ready, accessible, performant
+     ============================================ -->
+
 <style>
-.hero-section {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+/* =============================================
+   CSS CUSTOM PROPERTIES (Design Tokens)
+   ============================================= */
+:root {
+    /* Colors */
+    --color-bg-primary: #0a0a18;
+    --color-bg-secondary: #0f0f23;
+    --color-bg-tertiary: #151530;
+    --color-accent-indigo: #6366f1;
+    --color-accent-purple: #8b5cf6;
+    --color-accent-pink: #ec4899;
+    --color-accent-cyan: #06b6d4;
+    --color-text-primary: #ffffff;
+    --color-text-secondary: rgba(255, 255, 255, 0.7);
+    --color-text-muted: rgba(255, 255, 255, 0.5);
+
+    /* Spacing */
+    --space-xs: 0.5rem;
+    --space-sm: 1rem;
+    --space-md: 1.5rem;
+    --space-lg: 2rem;
+    --space-xl: 3rem;
+    --space-2xl: 4rem;
+    --space-3xl: 6rem;
+
+    /* Typography */
+    --font-display: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+
+    /* Animation */
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-base: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Effects */
+    --blur-glass: blur(20px) saturate(180%);
+    --shadow-glow: 0 0 40px rgba(99, 102, 241, 0.3);
+}
+
+/* =============================================
+   RESET & BASE
+   ============================================= */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* =============================================
+   HERO SECTION
+   ============================================= */
+.hero-premium {
     min-height: 100vh;
-    display: flex;
+    background: linear-gradient(135deg, var(--color-bg-secondary) 0%, #1a1a3e 25%, var(--color-bg-primary) 50%, var(--color-bg-tertiary) 75%, var(--color-bg-primary) 100%);
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+}
+
+/* Animated Mesh Background */
+.mesh-gradient {
+    position: absolute;
+    inset: 0;
+    background: 
+        radial-gradient(ellipse 80% 50% at 20% 40%, rgba(120, 119, 198, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse 60% 40% at 80% 20%, rgba(79, 70, 229, 0.12) 0%, transparent 50%),
+        radial-gradient(ellipse 50% 60% at 60% 80%, rgba(147, 51, 234, 0.1) 0%, transparent 50%),
+        radial-gradient(ellipse 40% 50% at 30% 90%, rgba(59, 130, 246, 0.08) 0%, transparent 50%);
+    animation: meshMove 20s ease-in-out infinite;
+    will-change: transform;
+}
+
+@keyframes meshMove {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    25% { transform: translate(2%, 2%) scale(1.02); }
+    50% { transform: translate(-1%, 3%) scale(1.01); }
+    75% { transform: translate(1%, -2%) scale(1.03); }
+}
+
+/* Floating Orbs with reduced motion support */
+@media (prefers-reduced-motion: no-preference) {
+    .orb {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(80px);
+        opacity: 0.6;
+        animation: floatOrb 15s ease-in-out infinite;
+        will-change: transform;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .orb {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(80px);
+        opacity: 0.4;
+        animation: none;
+    }
+}
+
+.orb-1 {
+    width: 600px;
+    height: 600px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    top: -200px;
+    right: -100px;
+    animation-delay: 0s;
+}
+
+.orb-2 {
+    width: 400px;
+    height: 400px;
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    bottom: -100px;
+    left: -100px;
+    animation-delay: -5s;
+}
+
+.orb-3 {
+    width: 300px;
+    height: 300px;
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    animation-delay: -10s;
+}
+
+@keyframes floatOrb {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(30px, -30px) scale(1.05); }
+    66% { transform: translate(-20px, 20px) scale(0.95); }
+}
+
+/* Glass Morphism Cards */
+.glass-premium {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: var(--blur-glass);
+    -webkit-backdrop-filter: var(--blur-glass);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 
+        0 32px 64px rgba(0, 0, 0, 0.3),
+        0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+        0 -20px 40px rgba(255, 255, 255, 0.02) inset;
+    transition: var(--transition-base);
+}
+
+.glass-premium:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.12);
+    transform: translateY(-4px);
+}
+
+/* Logo Animation */
+.logo-glow {
+    background: linear-gradient(135deg, var(--color-accent-indigo), var(--color-accent-purple), var(--color-accent-pink));
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: gradientShift 5s ease infinite, logoGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes gradientShift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+@keyframes logoGlow {
+    from { filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.5)); }
+    to { filter: drop-shadow(0 0 40px rgba(99, 102, 241, 0.8)); }
+}
+
+/* Premium Button with enhanced interactions */
+.btn-premium {
+    position: relative;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    overflow: hidden;
+    transition: all var(--transition-base);
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
     align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    color: white;
+    text-decoration: none;
+}
+
+.btn-premium::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    opacity: 0;
+    transition: opacity var(--transition-base);
+}
+
+.btn-premium:hover::before {
+    opacity: 1;
+}
+
+.btn-premium:hover {
+    transform: translateY(-2px);
+    box-shadow: 
+        0 20px 40px rgba(102, 126, 234, 0.4),
+        0 0 0 1px rgba(255, 255, 255, 0.1) inset,
+        var(--shadow-glow);
+}
+
+.btn-premium:active {
+    transform: translateY(0);
+}
+
+.btn-premium:focus-visible {
+    outline: 2px solid var(--color-accent-indigo);
+    outline-offset: 2px;
+}
+
+.btn-premium > * {
+    position: relative;
+    z-index: 1;
+}
+
+/* Secondary Button */
+.btn-secondary {
+    position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: transparent;
+    color: var(--color-text-secondary);
+    transition: all var(--transition-base);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: var(--color-text-primary);
+    transform: translateY(-2px);
+}
+
+.btn-secondary:focus-visible {
+    outline: 2px solid var(--color-accent-indigo);
+    outline-offset: 2px;
+}
+
+/* Feature Cards */
+.feature-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    transition: all var(--transition-slow);
+    position: relative;
+    overflow: hidden;
+}
+
+.feature-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity var(--transition-base);
+}
+
+.feature-card:hover::before {
+    opacity: 1;
+}
+
+.feature-card:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.12);
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 
+        0 24px 48px rgba(0, 0, 0, 0.2),
+        0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+}
+
+.feature-icon {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(168, 85, 247, 0.2) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: transform var(--transition-base);
+}
+
+.feature-card:hover .feature-icon {
+    transform: scale(1.1) rotate(5deg);
+}
+
+/* Stats */
+.stat-item {
+    position: relative;
+}
+
+.stat-item::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1px;
+    height: 60%;
+    background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.1), transparent);
+}
+
+.stat-item:last-child::after {
+    display: none;
+}
+
+.stat-number {
+    font-variant-numeric: tabular-nums;
+    background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.8) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+/* Animated Border */
+.animated-border {
+    position: relative;
+}
+
+.animated-border::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    background: linear-gradient(90deg, #667eea, #764ba2, #f093fb, #667eea);
+    background-size: 300% 100%;
+    border-radius: inherit;
+    z-index: -1;
+    animation: borderMove 4s linear infinite;
+    opacity: 0;
+    transition: opacity var(--transition-base);
+}
+
+.animated-border:hover::before {
+    opacity: 1;
+}
+
+@keyframes borderMove {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 300% 50%; }
+}
+
+/* Particles */
+.particles {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .particle {
+        position: absolute;
+        width: 4px;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        animation: particleFloat 20s linear infinite;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .particle {
+        display: none;
+    }
+}
+
+@keyframes particleFloat {
+    0% {
+        transform: translateY(100vh) rotate(0deg);
+        opacity: 0;
+    }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% {
+        transform: translateY(-100vh) rotate(720deg);
+        opacity: 0;
+    }
+}
+
+/* Scroll Indicator */
+.scroll-indicator {
+    animation: scrollBounce 2s ease-in-out infinite;
+}
+
+@keyframes scrollBounce {
+    0%, 100% { transform: translateY(0); opacity: 0.6; }
+    50% { transform: translateY(10px); opacity: 1; }
+}
+
+/* Navigation */
+.nav-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    transition: all var(--transition-base);
+    padding: var(--space-md) var(--space-lg);
+}
+
+.nav-container.scrolled {
+    background: rgba(10, 10, 24, 0.8);
+    backdrop-filter: var(--blur-glass);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding: var(--space-sm) var(--space-lg);
+}
+
+/* Program Cards */
+.program-card {
+    position: relative;
+    overflow: hidden;
+    transition: all var(--transition-slow);
+}
+
+.program-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity var(--transition-base);
+}
+
+.program-card:hover::after {
+    opacity: 1;
+}
+
+.program-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.program-header {
+    position: relative;
+    overflow: hidden;
+}
+
+.program-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Cpath d='M20 20c0-5.5-4.5-10-10-10S0 14.5 0 20s4.5 10 10 10 10-4.5 10-10zm10 0c0-5.5 4.5-10 10-10v20c-5.5 0-10-4.5-10-10z'/%3E%3C/g%3E%3C/svg%3E");
+    opacity: 0.5;
+}
+
+/* Badge Styles */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.badge-pulse {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #4ade80;
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Section Spacing */
+.section-padding {
+    padding: var(--space-3xl) var(--space-lg);
+}
+
+/* Grid Layouts */
+.grid-features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--space-lg);
+}
+
+.grid-programs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: var(--space-xl);
+}
+
+/* Utility Classes */
+.container {
+    width: 100%;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 var(--space-lg);
+}
+
+.text-gradient {
+    background: linear-gradient(135deg, var(--color-accent-indigo), var(--color-accent-purple), var(--color-accent-pink));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+/* Accessibility */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+/* Focus styles */
+a:focus-visible,
+button:focus-visible {
+    outline: 2px solid var(--color-accent-indigo);
+    outline-offset: 2px;
+}
+
+/* Skip to main content link */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: var(--color-accent-indigo);
+    color: white;
+    padding: 8px;
+    text-decoration: none;
+    z-index: 100;
+}
+
+.skip-link:focus {
+    top: 0;
+}
+
+/* Loading state for buttons */
+.btn-premium.loading {
+    pointer-events: none;
+    opacity: 0.8;
+}
+
+.btn-premium.loading::after {
+    content: '';
+    width: 16px;
+    height: 16px;
+    border: 2px solid transparent;
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    :root {
+        --space-lg: 1rem;
+        --space-xl: 1.5rem;
+        --space-2xl: 2rem;
+        --space-3xl: 3rem;
+    }
+
+    .hero-premium h1 {
+        font-size: 2.5rem;
+    }
+
+    .grid-features,
+    .grid-programs {
+        grid-template-columns: 1fr;
+    }
+
+    .stat-item::after {
+        display: none;
+    }
+}
+
+/* Print styles */
+@media print {
+    .hero-premium {
+        min-height: auto;
+        background: white;
+    }
+
+    .orb, .particles, .mesh-gradient {
+        display: none;
+    }
 }
 </style>
 
-<div class="hero-section">
-    <div class="container">
-        <div class="row align-items-center">
-            <div class="col-lg-6 text-white">
-                <h1 class="display-3 fw-bold mb-4">
-                    <i class="bi bi-mortarboard-fill"></i> EduMind AI
-                </h1>
-                <p class="lead mb-4">
-                    A modern, AI-powered Learning Management System designed for universities. 
-                    Enhance student learning with intelligent tutoring, personalized study plans, and career development tools.
-                </p>
-                <div class="d-flex gap-3">
-                    <a href="{{ url_for('auth.login') }}" class="btn btn-light btn-lg px-4">
-                        <i class="bi bi-box-arrow-in-right"></i> Login
+<!-- Skip to main content for accessibility -->
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
+<div class="hero-premium" role="banner">
+    <!-- Animated Background Elements -->
+    <div class="mesh-gradient" aria-hidden="true"></div>
+    <div class="orb orb-1" aria-hidden="true"></div>
+    <div class="orb orb-2" aria-hidden="true"></div>
+    <div class="orb orb-3" aria-hidden="true"></div>
+
+    <!-- Particles -->
+    <div class="particles" aria-hidden="true">
+        <div class="particle" style="left: 10%; animation-delay: 0s;"></div>
+        <div class="particle" style="left: 20%; animation-delay: -2s;"></div>
+        <div class="particle" style="left: 30%; animation-delay: -4s;"></div>
+        <div class="particle" style="left: 40%; animation-delay: -6s;"></div>
+        <div class="particle" style="left: 50%; animation-delay: -8s;"></div>
+        <div class="particle" style="left: 60%; animation-delay: -10s;"></div>
+        <div class="particle" style="left: 70%; animation-delay: -12s;"></div>
+        <div class="particle" style="left: 80%; animation-delay: -14s;"></div>
+        <div class="particle" style="left: 90%; animation-delay: -16s;"></div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="relative z-10 min-h-screen flex flex-col" id="main-content">
+        <!-- Navigation -->
+        <nav class="nav-container" role="navigation" aria-label="Main navigation">
+            <div class="container flex items-center justify-between">
+                <a href="/" class="flex items-center gap-3" aria-label="EduMind AI Home">
+                    <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                        <i class="bi bi-mortarboard-fill text-white text-xl" aria-hidden="true"></i>
+                    </div>
+                    <span class="text-2xl font-bold text-white">EduMind AI</span>
+                </a>
+
+                <div class="flex items-center gap-4">
+                    <a href="{{ url_for('auth.login') }}" class="hidden sm:block px-5 py-2.5 text-white/80 hover:text-white font-medium transition-colors">
+                        Sign In
                     </a>
-                    <a href="{{ url_for('auth.register') }}" class="btn btn-outline-light btn-lg px-4">
-                        <i class="bi bi-person-plus"></i> Register
+                    <a href="{{ url_for('auth.register') }}" class="btn-premium px-6 py-2.5 rounded-xl text-white font-semibold">
+                        <span>Get Started</span>
                     </a>
                 </div>
             </div>
-            <div class="col-lg-6 mt-5 mt-lg-0">
-                <div class="card shadow-lg border-0">
-                    <div class="card-body p-4">
-                        <h4 class="mb-4">Features</h4>
-                        <div class="d-flex align-items-center mb-3">
-                            <div class="bg-primary bg-opacity-10 p-3 rounded-circle me-3">
-                                <i class="bi bi-book text-primary fs-4"></i>
+        </nav>
+
+        <!-- Hero Section -->
+        <div class="flex-1 flex items-center pt-24 pb-12">
+            <div class="container">
+                <div class="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+                    <!-- Left Content -->
+                    <div class="space-y-8 max-w-2xl">
+                        <!-- Badge -->
+                        <div class="badge bg-white/5 border border-white/10 text-white/70">
+                            <span class="badge-pulse" aria-hidden="true"></span>
+                            <span>AI-Powered Learning Platform</span>
+                        </div>
+
+                        <!-- Main Heading -->
+                        <h1 class="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-white leading-[1.1] tracking-tight">
+                            Transform Your
+                            <span class="block logo-glow mt-2">
+                                Learning Journey
+                            </span>
+                        </h1>
+
+                        <!-- Description -->
+                        <p class="text-lg sm:text-xl text-white/60 max-w-lg leading-relaxed">
+                            Experience the future of education with our AI-powered Learning Management System. 
+                            Personalized study plans, intelligent tutoring, and career development tools.
+                        </p>
+
+                        <!-- CTA Buttons -->
+                        <div class="flex flex-wrap gap-4">
+                            <a href="{{ url_for('auth.register') }}" class="btn-premium px-8 py-4 rounded-2xl text-white font-semibold text-lg group">
+                                <span>Start Learning Free</span>
+                                <i class="bi bi-arrow-right group-hover:translate-x-1 transition-transform" aria-hidden="true"></i>
+                            </a>
+                            <button type="button" class="btn-secondary px-8 py-4 rounded-2xl font-medium text-lg" onclick="showDemoModal()">
+                                <i class="bi bi-play-circle" aria-hidden="true"></i>
+                                <span>Watch Demo</span>
+                            </button>
+                        </div>
+
+                        <!-- Stats -->
+                        <dl class="flex flex-wrap items-center gap-8 pt-8">
+                            <div class="stat-item pr-8">
+                                <dt class="sr-only">Number of diploma programs</dt>
+                                <dd class="text-3xl font-bold stat-number">5+</dd>
+                                <dt class="text-sm text-white/50">Diploma Programs</dt>
+                            </div>
+                            <div class="stat-item pr-8">
+                                <dt class="sr-only">Number of course modules</dt>
+                                <dd class="text-3xl font-bold stat-number">25+</dd>
+                                <dt class="text-sm text-white/50">Course Modules</dt>
+                            </div>
+                            <div class="stat-item">
+                                <dt class="sr-only">AI powered features</dt>
+                                <dd class="text-3xl font-bold stat-number">AI</dd>
+                                <dt class="text-sm text-white/50">Powered Tools</dt>
+                            </div>
+                        </dl>
+                    </div>
+
+                    <!-- Right Content - Feature Cards -->
+                    <div class="space-y-4 lg:pl-8">
+                        <article class="feature-card rounded-2xl p-6 flex items-start gap-5 animated-border">
+                            <div class="feature-icon w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <i class="bi bi-book text-indigo-400 text-2xl" aria-hidden="true"></i>
                             </div>
                             <div>
-                                <h5 class="mb-1">Course Management</h5>
-                                <p class="text-muted mb-0">Create, manage, and enroll in courses</p>
+                                <h3 class="text-lg font-semibold text-white mb-1">Course Management</h3>
+                                <p class="text-white/50 text-sm">Create, manage, and enroll in diploma programs with structured modules</p>
                             </div>
-                        </div>
-                        <div class="d-flex align-items-center mb-3">
-                            <div class="bg-success bg-opacity-10 p-3 rounded-circle me-3">
-                                <i class="bi bi-robot text-success fs-4"></i>
-                            </div>
-                            <div>
-                                <h5 class="mb-1">AI Learning Assistant</h5>
-                                <p class="text-muted mb-0">Get personalized help and study plans</p>
-                            </div>
-                        </div>
-                        <div class="d-flex align-items-center mb-3">
-                            <div class="bg-warning bg-opacity-10 p-3 rounded-circle me-3">
-                                <i class="bi bi-clipboard-check text-warning fs-4"></i>
+                        </article>
+
+                        <article class="feature-card rounded-2xl p-6 flex items-start gap-5 animated-border">
+                            <div class="feature-icon w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <i class="bi bi-robot text-purple-400 text-2xl" aria-hidden="true"></i>
                             </div>
                             <div>
-                                <h5 class="mb-1">Quiz & Assessment</h5>
-                                <p class="text-muted mb-0">Take quizzes and track your progress</p>
+                                <h3 class="text-lg font-semibold text-white mb-1">AI Learning Assistant</h3>
+                                <p class="text-white/50 text-sm">Get personalized help, study plans, and intelligent tutoring</p>
                             </div>
-                        </div>
-                        <div class="d-flex align-items-center">
-                            <div class="bg-info bg-opacity-10 p-3 rounded-circle me-3">
-                                <i class="bi bi-briefcase text-info fs-4"></i>
+                        </article>
+
+                        <article class="feature-card rounded-2xl p-6 flex items-start gap-5 animated-border">
+                            <div class="feature-icon w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <i class="bi bi-clipboard-check text-pink-400 text-2xl" aria-hidden="true"></i>
                             </div>
                             <div>
-                                <h5 class="mb-1">Career Development</h5>
-                                <p class="text-muted mb-0">CV reviews and job readiness tracking</p>
+                                <h3 class="text-lg font-semibold text-white mb-1">Quiz & Assessment</h3>
+                                <p class="text-white/50 text-sm">Take quizzes, track progress, and get instant feedback</p>
                             </div>
-                        </div>
+                        </article>
+
+                        <article class="feature-card rounded-2xl p-6 flex items-start gap-5 animated-border">
+                            <div class="feature-icon w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <i class="bi bi-briefcase text-cyan-400 text-2xl" aria-hidden="true"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-white mb-1">Career Development</h3>
+                                <p class="text-white/50 text-sm">CV reviews, job readiness tracking, and career guidance</p>
+                            </div>
+                        </article>
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- Scroll Indicator -->
+        <div class="absolute bottom-8 left-1/2 -translate-x-1/2 scroll-indicator">
+            <a href="#features" class="flex flex-col items-center gap-2 text-white/40 hover:text-white/60 transition-colors" aria-label="Scroll to features section">
+                <span class="text-xs uppercase tracking-widest">Scroll to explore</span>
+                <i class="bi bi-chevron-double-down text-xl" aria-hidden="true"></i>
+            </a>
+        </div>
     </div>
 </div>
+
+<!-- Features Section -->
+<section id="features" class="section-padding bg-gradient-to-b from-[#0a0a18] to-[#0f0f23]" aria-labelledby="features-heading">
+    <div class="container">
+        <!-- Section Header -->
+        <header class="text-center mb-16 max-w-3xl mx-auto">
+            <span class="badge bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 mb-4">
+                Why Choose EduMind
+            </span>
+            <h2 id="features-heading" class="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">
+                Everything You Need to <span class="text-gradient">Succeed</span>
+            </h2>
+            <p class="text-white/50 text-lg">
+                A comprehensive learning platform designed for modern education
+            </p>
+        </header>
+
+        <!-- Features Grid -->
+        <div class="grid-features">
+            <article class="glass-premium rounded-3xl p-8 group">
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                    <i class="bi bi-graph-up-arrow text-3xl text-blue-400" aria-hidden="true"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-white mb-3">Progress Tracking</h3>
+                <p class="text-white/50">Monitor your learning journey with detailed analytics and progress reports</p>
+            </article>
+
+            <article class="glass-premium rounded-3xl p-8 group">
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                    <i class="bi bi-person-workspace text-3xl text-purple-400" aria-hidden="true"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-white mb-3">Expert Lecturers</h3>
+                <p class="text-white/50">Learn from industry professionals and experienced educators</p>
+            </article>
+
+            <article class="glass-premium rounded-3xl p-8 group">
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500/20 to-emerald-500/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                    <i class="bi bi-file-earmark-pdf text-3xl text-green-400" aria-hidden="true"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-white mb-3">Rich Materials</h3>
+                <p class="text-white/50">Access comprehensive learning materials and resources</p>
+            </article>
+
+            <article class="glass-premium rounded-3xl p-8 group">
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500/20 to-amber-500/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                    <i class="bi bi-chat-dots text-3xl text-orange-400" aria-hidden="true"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-white mb-3">AI Chat Assistant</h3>
+                <p class="text-white/50">Get instant answers and support from our AI-powered chatbot</p>
+            </article>
+
+            <article class="glass-premium rounded-3xl p-8 group">
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-red-500/20 to-rose-500/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                    <i class="bi bi-calendar-check text-3xl text-red-400" aria-hidden="true"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-white mb-3">Attendance Tracking</h3>
+                <p class="text-white/50">Automated attendance management and reporting system</p>
+            </article>
+
+            <article class="glass-premium rounded-3xl p-8 group">
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-violet-500/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                    <i class="bi bi-award text-3xl text-indigo-400" aria-hidden="true"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-white mb-3">Certifications</h3>
+                <p class="text-white/50">Earn recognized diplomas and track your achievements</p>
+            </article>
+        </div>
+    </div>
+</section>
+
+<!-- Programs Section -->
+<section id="programs" class="section-padding bg-gradient-to-b from-[#0f0f23] to-[#0a0a18]" aria-labelledby="programs-heading">
+    <div class="container">
+        <!-- Section Header -->
+        <header class="text-center mb-16 max-w-3xl mx-auto">
+            <span class="badge bg-purple-500/10 border border-purple-500/20 text-purple-400 mb-4">
+                Our Programs
+            </span>
+            <h2 id="programs-heading" class="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">
+                Diploma <span class="text-gradient">Programs</span>
+            </h2>
+            <p class="text-white/50 text-lg">
+                Choose from our industry-aligned diploma programs
+            </p>
+        </header>
+
+        <!-- Programs Grid -->
+        <div class="grid-programs">
+            <!-- Business Management -->
+            <article class="program-card glass-premium rounded-3xl overflow-hidden">
+                <div class="program-header h-32 bg-gradient-to-br from-green-600 to-emerald-500">
+                    <div class="absolute bottom-4 left-4">
+                        <i class="bi bi-graph-up text-white/80 text-4xl" aria-hidden="true"></i>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <h3 class="text-xl font-semibold text-white mb-2">Business Management</h3>
+                    <p class="text-white/50 text-sm mb-4">Management, accounting, marketing, entrepreneurship</p>
+                    <div class="flex items-center justify-between">
+                        <span class="text-white/40 text-sm">5 Modules</span>
+                        <span class="badge bg-green-500/20 text-green-400 text-xs">DBM</span>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Civil Engineering -->
+            <article class="program-card glass-premium rounded-3xl overflow-hidden">
+                <div class="program-header h-32 bg-gradient-to-br from-orange-600 to-amber-500">
+                    <div class="absolute bottom-4 left-4">
+                        <i class="bi bi-building text-white/80 text-4xl" aria-hidden="true"></i>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <h3 class="text-xl font-semibold text-white mb-2">Civil Engineering</h3>
+                    <p class="text-white/50 text-sm mb-4">Structural mechanics, surveying, construction tech</p>
+                    <div class="flex items-center justify-between">
+                        <span class="text-white/40 text-sm">5 Modules</span>
+                        <span class="badge bg-orange-500/20 text-orange-400 text-xs">DCE</span>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Environmental Science -->
+            <article class="program-card glass-premium rounded-3xl overflow-hidden">
+                <div class="program-header h-32 bg-gradient-to-br from-teal-600 to-cyan-500">
+                    <div class="absolute bottom-4 left-4">
+                        <i class="bi bi-globe text-white/80 text-4xl" aria-hidden="true"></i>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <h3 class="text-xl font-semibold text-white mb-2">Environmental Science</h3>
+                    <p class="text-white/50 text-sm mb-4">Ecology, geology, environmental management</p>
+                    <div class="flex items-center justify-between">
+                        <span class="text-white/40 text-sm">5 Modules</span>
+                        <span class="badge bg-teal-500/20 text-teal-400 text-xs">DES</span>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Graphic Design -->
+            <article class="program-card glass-premium rounded-3xl overflow-hidden">
+                <div class="program-header h-32 bg-gradient-to-br from-purple-600 to-pink-500">
+                    <div class="absolute bottom-4 left-4">
+                        <i class="bi bi-palette text-white/80 text-4xl" aria-hidden="true"></i>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <h3 class="text-xl font-semibold text-white mb-2">Graphic Design</h3>
+                    <p class="text-white/50 text-sm mb-4">Visual communication, illustration, typography</p>
+                    <div class="flex items-center justify-between">
+                        <span class="text-white/40 text-sm">5 Modules</span>
+                        <span class="badge bg-purple-500/20 text-purple-400 text-xs">DGD</span>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Information Technology -->
+            <article class="program-card glass-premium rounded-3xl overflow-hidden">
+                <div class="program-header h-32 bg-gradient-to-br from-blue-600 to-cyan-500">
+                    <div class="absolute bottom-4 left-4">
+                        <i class="bi bi-laptop text-white/80 text-4xl" aria-hidden="true"></i>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <h3 class="text-xl font-semibold text-white mb-2">Information Technology</h3>
+                    <p class="text-white/50 text-sm mb-4">Programming, databases, web development, networks</p>
+                    <div class="flex items-center justify-between">
+                        <span class="text-white/40 text-sm">5 Modules</span>
+                        <span class="badge bg-blue-500/20 text-blue-400 text-xs">DIT</span>
+                    </div>
+                </div>
+            </article>
+
+            <!-- CTA Card -->
+            <article class="glass-premium rounded-3xl p-8 flex flex-col items-center justify-center text-center">
+                <div class="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center mb-6">
+                    <i class="bi bi-plus text-4xl text-indigo-400" aria-hidden="true"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-white mb-2">Ready to Start?</h3>
+                <p class="text-white/50 text-sm mb-6">Join thousands of students already learning</p>
+                <a href="{{ url_for('auth.register') }}" class="btn-premium px-6 py-3 rounded-xl text-white font-semibold">
+                    <span>Enroll Now</span>
+                </a>
+            </article>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="py-12 px-6 bg-[#0a0a18] border-t border-white/5" role="contentinfo">
+    <div class="container">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                    <i class="bi bi-mortarboard-fill text-white" aria-hidden="true"></i>
+                </div>
+                <span class="text-lg font-semibold text-white">EduMind AI</span>
+            </div>
+
+            <p class="text-white/40 text-sm">
+                © 2025 EduMind AI. All rights reserved.
+            </p>
+
+            <div class="flex items-center gap-4">
+                <a href="#" class="w-10 h-10 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition-all" aria-label="Twitter">
+                    <i class="bi bi-twitter" aria-hidden="true"></i>
+                </a>
+                <a href="#" class="w-10 h-10 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition-all" aria-label="LinkedIn">
+                    <i class="bi bi-linkedin" aria-hidden="true"></i>
+                </a>
+                <a href="#" class="w-10 h-10 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition-all" aria-label="GitHub">
+                    <i class="bi bi-github" aria-hidden="true"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- Demo Modal -->
+<dialog id="demo-modal" class="glass-premium rounded-3xl p-0 max-w-3xl w-full mx-auto backdrop:bg-black/80">
+    <div class="p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-semibold text-white">Platform Demo</h3>
+            <button type="button" onclick="closeDemoModal()" class="text-white/50 hover:text-white transition-colors" aria-label="Close modal">
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+        </div>
+        <div class="aspect-video bg-black/50 rounded-xl flex items-center justify-center">
+            <p class="text-white/50">Demo video placeholder</p>
+        </div>
+    </div>
+</dialog>
+
+<script>
+// Navigation scroll effect
+const nav = document.querySelector('.nav-container');
+let lastScroll = 0;
+
+window.addEventListener('scroll', () => {
+    const currentScroll = window.pageYOffset;
+
+    if (currentScroll > 50) {
+        nav.classList.add('scrolled');
+    } else {
+        nav.classList.remove('scrolled');
+    }
+
+    lastScroll = currentScroll;
+}, { passive: true });
+
+// Demo Modal Functions
+function showDemoModal() {
+    const modal = document.getElementById('demo-modal');
+    modal.showModal();
+    document.body.style.overflow = 'hidden';
+}
+
+function closeDemoModal() {
+    const modal = document.getElementById('demo-modal');
+    modal.close();
+    document.body.style.overflow = '';
+}
+
+// Close modal on backdrop click
+document.getElementById('demo-modal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) {
+        closeDemoModal();
+    }
+});
+
+// Close modal on Escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeDemoModal();
+    }
+});
+
+// Smooth scroll for anchor links
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+            target.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+        }
+    });
+});
+
+// Intersection Observer for fade-in animations
+const observerOptions = {
+    root: null,
+    rootMargin: '0px',
+    threshold: 0.1
+};
+
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.style.opacity = '1';
+            entry.target.style.transform = 'translateY(0)';
+        }
+    });
+}, observerOptions);
+
+// Observe cards for animation
+document.querySelectorAll('.glass-premium, .feature-card').forEach((el, index) => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(20px)';
+    el.style.transition = `opacity 0.5s ease ${index * 0.1}s, transform 0.5s ease ${index * 0.1}s`;
+    observer.observe(el);
+});
+</script>
+
 {% endblock %}

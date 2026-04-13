@@ -1,0 +1,579 @@
+{% extends "base.html" %}
+
+{% block title %}Create Quiz - EduMind AI{% endblock %}
+
+{% block page_title %}Create New Quiz{% endblock %}
+
+{% block extra_css %}
+<style>
+    .quiz-type-card {
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    .quiz-type-card:hover {
+        transform: translateY(-4px);
+        background: rgba(59, 130, 246, 0.1);
+    }
+    .quiz-type-card.selected {
+        background: rgba(59, 130, 246, 0.2);
+        border-color: rgba(59, 130, 246, 0.5);
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+    }
+    .progress-step {
+        transition: all 0.3s ease;
+    }
+    .progress-step.active {
+        background: rgba(59, 130, 246, 0.2);
+        border-color: rgba(59, 130, 246, 0.5);
+    }
+    .progress-step.completed {
+        background: rgba(16, 185, 129, 0.2);
+        border-color: rgba(16, 185, 129, 0.5);
+    }
+    .preview-card {
+        animation: fadeIn 0.5s ease-out;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .setting-toggle {
+        transition: all 0.2s ease;
+    }
+    .setting-toggle.active {
+        background: rgba(59, 130, 246, 0.2);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Progress Steps -->
+<div class="flex items-center justify-center mb-8 animate-slide-up">
+    <div class="flex items-center gap-4">
+        <div class="progress-step active w-10 h-10 rounded-full border-2 border-blue-500/50 bg-blue-500/20 flex items-center justify-center" data-step="1">
+            <span class="text-sm font-bold text-blue-400">1</span>
+        </div>
+        <div class="w-16 h-0.5 bg-white/10"></div>
+        <div class="progress-step w-10 h-10 rounded-full border-2 border-white/20 flex items-center justify-center" data-step="2">
+            <span class="text-sm font-bold text-slate-500">2</span>
+        </div>
+        <div class="w-16 h-0.5 bg-white/10"></div>
+        <div class="progress-step w-10 h-10 rounded-full border-2 border-white/20 flex items-center justify-center" data-step="3">
+            <span class="text-sm font-bold text-slate-500">3</span>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Main Form -->
+    <div class="lg:col-span-2 space-y-6">
+        <!-- Step 1: Basic Info -->
+        <div id="step1" class="bento-item glass-card p-6 animate-slide-up">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                    <i class="bi bi-info-circle text-blue-400"></i>
+                </div>
+                <div>
+                    <h3 class="font-display font-semibold text-lg">Quiz Basics</h3>
+                    <p class="text-xs text-slate-400">Step 1 of 3</p>
+                </div>
+            </div>
+
+            <form id="quizForm" method="POST" class="space-y-5">
+                <!-- Quiz Title -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-slate-300 flex items-center gap-2">
+                        <i class="bi bi-type text-slate-500"></i>
+                        Quiz Title <span class="text-red-400">*</span>
+                    </label>
+                    <input type="text" name="title" id="quizTitle" required
+                           class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white text-lg font-medium placeholder-slate-500 transition-all"
+                           placeholder="e.g., Midterm Examination: Data Structures"
+                           oninput="updatePreview()">
+                </div>
+
+                <!-- Description -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-slate-300 flex items-center gap-2">
+                        <i class="bi bi-text-paragraph text-slate-500"></i>
+                        Description
+                    </label>
+                    <textarea name="description" id="quizDescription" rows="3"
+                              class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white placeholder-slate-500 resize-none transition-all"
+                              placeholder="Describe what this quiz covers and any instructions for students..."
+                              oninput="updatePreview()"></textarea>
+                    <div class="flex justify-between text-xs text-slate-500">
+                        <span>Markdown supported</span>
+                        <span id="charCount">0/500</span>
+                    </div>
+                </div>
+
+                <!-- Quiz Type -->
+                <div class="space-y-3">
+                    <label class="text-sm font-medium text-slate-300">Quiz Type</label>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="quiz-type-card selected p-4 rounded-xl bg-white/5 border border-white/10 text-center" onclick="selectQuizType(this, 'graded')">
+                            <input type="radio" name="quiz_type" value="graded" class="sr-only" checked>
+                            <i class="bi bi-award text-2xl mb-2 block text-blue-400"></i>
+                            <p class="font-medium text-sm text-white">Graded</p>
+                            <p class="text-xs text-slate-400 mt-1">Counts toward final grade</p>
+                        </div>
+                        <div class="quiz-type-card p-4 rounded-xl bg-white/5 border border-white/10 text-center" onclick="selectQuizType(this, 'practice')">
+                            <input type="radio" name="quiz_type" value="practice" class="sr-only">
+                            <i class="bi bi-book text-2xl mb-2 block text-emerald-400"></i>
+                            <p class="font-medium text-sm text-white">Practice</p>
+                            <p class="text-xs text-slate-400 mt-1">Unlimited attempts</p>
+                        </div>
+                        <div class="quiz-type-card p-4 rounded-xl bg-white/5 border border-white/10 text-center" onclick="selectQuizType(this, 'survey')">
+                            <input type="radio" name="quiz_type" value="survey" class="sr-only">
+                            <i class="bi bi-clipboard-data text-2xl mb-2 block text-purple-400"></i>
+                            <p class="font-medium text-sm text-white">Survey</p>
+                            <p class="text-xs text-slate-400 mt-1">No correct answers</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end pt-4">
+                    <button type="button" onclick="nextStep(2)" 
+                            class="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all flex items-center gap-2">
+                        Next Step
+                        <i class="bi bi-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Settings (Hidden initially) -->
+        <div id="step2" class="bento-item glass-card p-6 hidden animate-slide-up">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                    <i class="bi bi-gear text-amber-400"></i>
+                </div>
+                <div>
+                    <h3 class="font-display font-semibold text-lg">Quiz Settings</h3>
+                    <p class="text-xs text-slate-400">Step 2 of 3</p>
+                </div>
+            </div>
+
+            <div class="space-y-5">
+                <!-- Time & Score Settings -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-slate-300">Time Limit</label>
+                        <div class="relative">
+                            <input type="number" name="time_limit" id="timeLimit" value="30" min="1"
+                                   class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white pr-16"
+                                   onchange="updatePreview()">
+                            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-500">min</span>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-slate-300">Passing Score</label>
+                        <div class="relative">
+                            <input type="number" name="passing_score" id="passingScore" value="60" min="0" max="100"
+                                   class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white pr-12"
+                                   onchange="updatePreview()">
+                            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-500">%</span>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-slate-300">Due date</label>
+                        <input type="datetime-local" name="due_date" id="dueDate"
+                               class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white"
+                               onchange="updatePreview()">
+                        <p class="text-xs text-slate-500">After this moment ({{ app_timezone_label }}), students can open a read-only view but cannot submit answers.</p>
+                    </div>
+                </div>
+
+                <!-- Attempts -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-slate-300">Attempts Allowed</label>
+                    <div class="flex items-center gap-3">
+                        <select name="attempts" id="attempts" 
+                                class="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white"
+                                onchange="updatePreview()">
+                            <option value="1">1 attempt</option>
+                            <option value="2">2 attempts</option>
+                            <option value="3" selected>3 attempts</option>
+                            <option value="unlimited">Unlimited</option>
+                        </select>
+                        <div class="flex items-center gap-2 px-4 py-3 rounded-xl bg-white/5 border border-white/10">
+                            <input type="checkbox" id="keepHighest" class="rounded bg-white/10 border-white/20 text-blue-500 focus:ring-blue-500/20">
+                            <label for="keepHighest" class="text-sm text-slate-300">Keep highest score</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Additional Options -->
+                <div class="space-y-3">
+                    <label class="text-sm font-medium text-slate-300">Additional Options</label>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div class="setting-toggle flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 cursor-pointer" onclick="toggleSetting(this)">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                                    <i class="bi bi-shuffle text-blue-400"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-sm text-white">Shuffle Questions</p>
+                                    <p class="text-xs text-slate-400">Random order for each student</p>
+                                </div>
+                            </div>
+                            <div class="w-12 h-6 rounded-full bg-slate-700 relative transition-colors toggle-switch">
+                                <div class="w-5 h-5 rounded-full bg-white absolute top-0.5 left-0.5 transition-transform"></div>
+                            </div>
+                        </div>
+                        <div class="setting-toggle flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 cursor-pointer" onclick="toggleSetting(this)">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                                    <i class="bi bi-eye text-emerald-400"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-sm text-white">Show Correct Answers</p>
+                                    <p class="text-xs text-slate-400">After submission</p>
+                                </div>
+                            </div>
+                            <div class="w-12 h-6 rounded-full bg-blue-500 relative transition-colors toggle-switch">
+                                <div class="w-5 h-5 rounded-full bg-white absolute top-0.5 right-0.5 transition-transform"></div>
+                            </div>
+                        </div>
+                        <div class="setting-toggle flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 cursor-pointer" onclick="toggleSetting(this)">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                                    <i class="bi bi-clock-history text-purple-400"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-sm text-white">Late Submissions</p>
+                                    <p class="text-xs text-slate-400">Allow after due date</p>
+                                </div>
+                            </div>
+                            <div class="w-12 h-6 rounded-full bg-slate-700 relative transition-colors toggle-switch">
+                                <div class="w-5 h-5 rounded-full bg-white absolute top-0.5 left-0.5 transition-transform"></div>
+                            </div>
+                        </div>
+                        <div class="setting-toggle flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 cursor-pointer" onclick="toggleSetting(this)">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                                    <i class="bi bi-calculator text-amber-400"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-sm text-white">Show Points</p>
+                                    <p class="text-xs text-slate-400">During quiz</p>
+                                </div>
+                            </div>
+                            <div class="w-12 h-6 rounded-full bg-blue-500 relative transition-colors toggle-switch">
+                                <div class="w-5 h-5 rounded-full bg-white absolute top-0.5 right-0.5 transition-transform"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-between pt-4">
+                    <button type="button" onclick="prevStep(1)" 
+                            class="px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 transition-all flex items-center gap-2">
+                        <i class="bi bi-arrow-left"></i>
+                        Back
+                    </button>
+                    <button type="button" onclick="nextStep(3)" 
+                            class="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all flex items-center gap-2">
+                        Next Step
+                        <i class="bi bi-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: Review & Create (Hidden initially) -->
+        <div id="step3" class="bento-item glass-card p-6 hidden animate-slide-up">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                    <i class="bi bi-check-circle text-emerald-400"></i>
+                </div>
+                <div>
+                    <h3 class="font-display font-semibold text-lg">Review & Create</h3>
+                    <p class="text-xs text-slate-400">Step 3 of 3</p>
+                </div>
+            </div>
+
+            <div class="space-y-5">
+                <!-- Summary -->
+                <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+                    <h4 class="font-semibold text-white mb-3">Quiz Summary</h4>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Title:</span>
+                            <span class="text-white" id="summaryTitle">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Type:</span>
+                            <span class="text-white" id="summaryType">Graded</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Time Limit:</span>
+                            <span class="text-white" id="summaryTime">30 minutes</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Passing Score:</span>
+                            <span class="text-white" id="summaryPassing">60%</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Attempts:</span>
+                            <span class="text-white" id="summaryAttempts">3</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tips -->
+                <div class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                    <div class="flex items-start gap-3">
+                        <i class="bi bi-lightbulb text-amber-400 text-xl"></i>
+                        <div>
+                            <p class="font-medium text-amber-300 mb-1">Pro Tip</p>
+                            <p class="text-sm text-amber-200/80">After creating the quiz, you'll be able to add questions. We recommend adding at least 10 questions for a comprehensive assessment.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-between pt-4">
+                    <button type="button" onclick="prevStep(2)" 
+                            class="px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 transition-all flex items-center gap-2">
+                        <i class="bi bi-arrow-left"></i>
+                        Back
+                    </button>
+                    <button type="submit" 
+                            class="px-8 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all flex items-center gap-2">
+                        <i class="bi bi-check-lg"></i>
+                        Create Quiz
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    </form>
+
+    <!-- Live Preview Sidebar -->
+    <div class="lg:col-span-1">
+        <div class="bento-item glass-card p-6 sticky top-6 animate-slide-up" style="animation-delay: 0.2s">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                    <i class="bi bi-eye text-purple-400"></i>
+                </div>
+                <h3 class="font-display font-semibold text-lg">Live Preview</h3>
+            </div>
+
+            <div class="preview-card p-4 rounded-xl bg-white/5 border border-white/10 space-y-4">
+                <!-- Preview Header -->
+                <div class="border-b border-white/10 pb-4">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="px-2 py-0.5 rounded text-xs font-medium bg-blue-500/20 text-blue-300" id="previewType">Graded</span>
+                        <span class="px-2 py-0.5 rounded text-xs font-medium bg-amber-500/20 text-amber-300" id="previewPoints">0 points</span>
+                    </div>
+                    <h4 class="font-semibold text-white text-lg" id="previewTitle">Untitled Quiz</h4>
+                    <p class="text-sm text-slate-400 mt-1 line-clamp-2" id="previewDescription">No description provided</p>
+                </div>
+
+                <!-- Preview Meta -->
+                <div class="space-y-2 text-sm">
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-400 flex items-center gap-2">
+                            <i class="bi bi-clock"></i> Time Limit
+                        </span>
+                        <span class="text-white" id="previewTime">30 min</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-400 flex items-center gap-2">
+                            <i class="bi bi-check-circle"></i> Passing Score
+                        </span>
+                        <span class="text-white" id="previewPassing">60%</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-400 flex items-center gap-2">
+                            <i class="bi bi-arrow-repeat"></i> Attempts
+                        </span>
+                        <span class="text-white" id="previewAttempts">3</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-400 flex items-center gap-2">
+                            <i class="bi bi-calendar"></i> Due Date
+                        </span>
+                        <span class="text-white" id="previewDue">Not set</span>
+                    </div>
+                </div>
+
+                <!-- Preview Footer -->
+                <div class="pt-4 border-t border-white/10">
+                    <div class="flex items-center gap-2 text-xs text-slate-500">
+                        <i class="bi bi-info-circle"></i>
+                        <span>This is how students will see your quiz</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Tips -->
+            <div class="mt-6 p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                <h4 class="font-semibold text-blue-300 text-sm mb-2">Quiz Best Practices</h4>
+                <ul class="space-y-1 text-xs text-blue-200/80">
+                    <li class="flex gap-2">
+                        <i class="bi bi-check2 text-blue-400"></i>
+                        <span>Clear, specific title</span>
+                    </li>
+                    <li class="flex gap-2">
+                        <i class="bi bi-check2 text-blue-400"></i>
+                        <span>Detailed instructions</span>
+                    </li>
+                    <li class="flex gap-2">
+                        <i class="bi bi-check2 text-blue-400"></i>
+                        <span>Reasonable time limit</span>
+                    </li>
+                    <li class="flex gap-2">
+                        <i class="bi bi-check2 text-blue-400"></i>
+                        <span>Multiple attempts for practice</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentStep = 1;
+
+    function nextStep(step) {
+        // Validate current step
+        if (step === 2 && !document.getElementById('quizTitle').value.trim()) {
+            showToast('Please enter a quiz title', 'error');
+            document.getElementById('quizTitle').focus();
+            return;
+        }
+
+        // Hide current step
+        document.getElementById(`step${currentStep}`).classList.add('hidden');
+        
+        // Show next step
+        document.getElementById(`step${step}`).classList.remove('hidden');
+        
+        // Update progress
+        updateProgress(step);
+        
+        currentStep = step;
+        
+        // Update summary if going to step 3
+        if (step === 3) {
+            updateSummary();
+        }
+    }
+
+    function prevStep(step) {
+        document.getElementById(`step${currentStep}`).classList.add('hidden');
+        document.getElementById(`step${step}`).classList.remove('hidden');
+        updateProgress(step);
+        currentStep = step;
+    }
+
+    function updateProgress(step) {
+        document.querySelectorAll('.progress-step').forEach((el, index) => {
+            const stepNum = index + 1;
+            el.classList.remove('active', 'completed');
+            
+            if (stepNum === step) {
+                el.classList.add('active');
+                el.querySelector('span').textContent = stepNum;
+            } else if (stepNum < step) {
+                el.classList.add('completed');
+                el.innerHTML = '<i class="bi bi-check text-emerald-400"></i>';
+            } else {
+                el.querySelector('span').textContent = stepNum;
+            }
+        });
+    }
+
+    function selectQuizType(element, type) {
+        document.querySelectorAll('.quiz-type-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+        element.classList.add('selected');
+        element.querySelector('input').checked = true;
+        updatePreview();
+    }
+
+    function toggleSetting(element) {
+        const switchEl = element.querySelector('.toggle-switch');
+        const knob = switchEl.querySelector('div');
+        
+        element.classList.toggle('active');
+        
+        if (switchEl.classList.contains('bg-blue-500')) {
+            switchEl.classList.remove('bg-blue-500');
+            switchEl.classList.add('bg-slate-700');
+            knob.style.transform = 'translateX(0)';
+        } else {
+            switchEl.classList.remove('bg-slate-700');
+            switchEl.classList.add('bg-blue-500');
+            knob.style.transform = 'translateX(24px)';
+        }
+    }
+
+    function updatePreview() {
+        const title = document.getElementById('quizTitle').value || 'Untitled Quiz';
+        const description = document.getElementById('quizDescription').value || 'No description provided';
+        const type = document.querySelector('input[name="quiz_type"]:checked').value;
+        const time = document.getElementById('timeLimit').value || '30';
+        const passing = document.getElementById('passingScore').value || '60';
+        const attempts = document.getElementById('attempts').value || '3';
+        const dueDate = document.getElementById('dueDate').value;
+
+        document.getElementById('previewTitle').textContent = title;
+        document.getElementById('previewDescription').textContent = description;
+        document.getElementById('previewType').textContent = type.charAt(0).toUpperCase() + type.slice(1);
+        document.getElementById('previewTime').textContent = time + ' min';
+        document.getElementById('previewPassing').textContent = passing + '%';
+        document.getElementById('previewAttempts').textContent = attempts === 'unlimited' ? 'Unlimited' : attempts;
+        document.getElementById('previewDue').textContent = dueDate ? new Date(dueDate).toLocaleDateString() : 'Not set';
+
+        // Update character count
+        document.getElementById('charCount').textContent = `${description.length}/500`;
+    }
+
+    function updateSummary() {
+        document.getElementById('summaryTitle').textContent = document.getElementById('quizTitle').value || '-';
+        document.getElementById('summaryType').textContent = document.querySelector('input[name="quiz_type"]:checked').value;
+        document.getElementById('summaryTime').textContent = document.getElementById('timeLimit').value + ' minutes';
+        document.getElementById('summaryPassing').textContent = document.getElementById('passingScore').value + '%';
+        document.getElementById('summaryAttempts').textContent = document.getElementById('attempts').value;
+    }
+
+    // Toast notification
+    function showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        const colors = {
+            success: 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300',
+            error: 'bg-red-500/20 border-red-500/30 text-red-300',
+            info: 'bg-blue-500/20 border-blue-500/30 text-blue-300'
+        };
+        
+        toast.className = `fixed bottom-4 right-4 px-6 py-3 rounded-xl glass-card border ${colors[type]} transform translate-y-full opacity-0 transition-all duration-300 z-50 flex items-center gap-2`;
+        toast.innerHTML = `
+            <i class="bi ${type === 'success' ? 'bi-check-circle' : type === 'error' ? 'bi-x-circle' : 'bi-info-circle'}"></i>
+            <span class="font-medium">${message}</span>
+        `;
+        
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.classList.remove('translate-y-full', 'opacity-0');
+        }, 10);
+        
+        setTimeout(() => {
+            toast.classList.add('translate-y-full', 'opacity-0');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('quizTitle').focus();
+        updatePreview();
+    });
+</script>
+{% endblock %}

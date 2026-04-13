@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+
+{% block title %}My Modules - EduMind AI{% endblock %}
+
+{% block page_title %}My Modules{% endblock %}
+
+{% block content %}
+<!-- Safe Variable Initialization -->
+{% set modules_list = modules|default([], true) %}
+{% set modules_count = modules_list|length %}
+
+<div class="space-y-6">
+    <!-- Header Card with Bento Style -->
+    <div class="glass-panel rounded-3xl p-8 relative overflow-hidden group">
+        <!-- Animated Background Gradient -->
+        <div class="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+        <div class="absolute top-0 right-0 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none"></div>
+        
+        <div class="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20 float-element">
+                        <i class="bi bi-grid-3x3-gap-fill text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-3xl font-display font-bold text-white tracking-tight">My Modules</h2>
+                        <p class="text-slate-400 text-sm mt-1">
+                            {{ modules_count }} module{% if modules_count != 1 %}s{% endif %} from your enrolled courses
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <a href="{{ url_for('courses.index') }}"
+               class="group/btn inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-slate-200 transition-all text-sm font-semibold relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-500/10 to-blue-500/0 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700"></div>
+                <i class="bi bi-compass relative z-10"></i>
+                <span class="relative z-10">Browse courses</span>
+            </a>
+        </div>
+        
+        <!-- Quick Stats Row -->
+        {% if modules_count > 0 %}
+        <div class="mt-6 pt-6 border-t border-white/10 grid grid-cols-3 gap-4">
+            <div class="text-center">
+                <p class="text-2xl font-bold text-white">{{ modules_count }}</p>
+                <p class="text-xs text-slate-400 mt-1">Total Modules</p>
+            </div>
+            <div class="text-center border-x border-white/10">
+                <p class="text-2xl font-bold text-blue-400">
+                    {% set total_materials = namespace(value=0) %}
+                    {% for mod in modules_list %}
+                        {% if mod and mod.materials %}
+                            {% set total_materials.value = total_materials.value + mod.materials|length %}
+                        {% endif %}
+                    {% endfor %}
+                    {{ total_materials.value }}
+                </p>
+                <p class="text-xs text-slate-400 mt-1">Materials</p>
+            </div>
+            <div class="text-center">
+                <p class="text-2xl font-bold text-purple-400">
+                    {% set total_quizzes = namespace(value=0) %}
+                    {% for mod in modules_list %}
+                        {% if mod and mod.quizzes %}
+                            {% set total_quizzes.value = total_quizzes.value + mod.quizzes|length %}
+                        {% endif %}
+                    {% endfor %}
+                    {{ total_quizzes.value }}
+                </p>
+                <p class="text-xs text-slate-400 mt-1">Quizzes</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if modules_count > 0 %}
+        <!-- Bento Grid Layout [^54^][^19^] -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {% for module in modules_list %}
+            {% if module %}
+            {% set mod_title = module.title|default('Untitled Module') %}
+            {% set mod_desc = module.description|default('No description available') %}
+            {% set mod_course = module.course|default(None) %}
+            {% set mod_course_name = mod_course.name|default('Unknown Course') if mod_course else 'Unknown Course' %}
+            {% set mod_order = module.order|default(0) %}
+            {% set materials = module.materials|default([], true) %}
+            {% set quizzes = module.quizzes|default([], true) %}
+            {% set assignments = module.assignments|default([], true) %}
+            {% set mod_id = module.id|default(0) %}
+            {% set course_id = module.course_id|default(0) %}
+            
+            <!-- Module Card with Bento Style -->
+            <div class="glass-panel rounded-2xl p-6 relative overflow-hidden group hover:scale-[1.02] transition-all duration-300 cursor-pointer" 
+                 onclick="location.href='{{ url_for('courses.module_hub', module_id=mod_id) }}'"
+                 style="animation: slide-up 0.5s ease-out {{ loop.index * 0.08 }}s both;">
+                
+                <!-- Left Accent Border -->
+                <div class="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-blue-500 via-purple-500 to-transparent opacity-70 group-hover:opacity-100 transition-opacity"></div>
+                
+                <!-- Hover Glow Effect -->
+                <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+
+                <!-- Card Header -->
+                <div class="flex items-start justify-between mb-4 gap-3 relative z-10">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center border border-blue-500/20 flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
+                            <i class="bi bi-grid-3x3-gap-fill text-xl text-blue-300"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <h3 class="font-display font-bold text-lg text-white tracking-tight truncate group-hover:text-blue-300 transition-colors">{{ mod_title }}</h3>
+                            <p class="text-sm text-slate-400 truncate flex items-center gap-1">
+                                <i class="bi bi-book text-xs"></i>
+                                {{ mod_course_name }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Module Number Badge -->
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-900/50 text-slate-300 border border-white/10 flex-shrink-0">
+                        <i class="bi bi-hash text-slate-500"></i>
+                        {{ mod_order }}
+                    </span>
+                </div>
+
+                <!-- Description -->
+                <p class="text-slate-300 text-sm mb-5 line-clamp-2 leading-relaxed relative z-10">
+                    {{ mod_desc }}
+                </p>
+
+                <!-- Content Stats -->
+                <div class="flex flex-wrap items-center gap-3 mb-5 relative z-10">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs bg-white/5 text-slate-400 border border-white/5">
+                        <i class="bi bi-file-text text-blue-400"></i>
+                        {{ materials|length }} materials
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs bg-white/5 text-slate-400 border border-white/5">
+                        <i class="bi bi-clipboard-check text-purple-400"></i>
+                        {{ quizzes|length }} quizzes
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs bg-white/5 text-slate-400 border border-white/5">
+                        <i class="bi bi-journal-text text-emerald-400"></i>
+                        {{ assignments|length }} assignments
+                    </span>
+                </div>
+
+                <!-- Progress Bar (if progress data available) -->
+                {% if module.progress is defined and module.progress is not none %}
+                <div class="mb-4 relative z-10">
+                    <div class="flex items-center justify-between text-xs mb-1.5">
+                        <span class="text-slate-400">Progress</span>
+                        <span class="text-blue-400 font-medium">{{ module.progress }}%</span>
+                    </div>
+                    <div class="h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
+                        <div class="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-1000" 
+                             style="width: {{ module.progress }}%"></div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Action Button -->
+                <div class="relative z-10">
+                    <button class="w-full py-3 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 hover:text-blue-200 border border-blue-500/20 hover:border-blue-500/30 transition-all text-sm font-semibold flex items-center justify-center gap-2 group/btn">
+                        <span>Open Module</span>
+                        <i class="bi bi-arrow-right group-hover/btn:translate-x-1 transition-transform"></i>
+                    </button>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    {% else %}
+        <!-- Empty State with Premium Design -->
+        <div class="glass-panel rounded-3xl p-16 text-center max-w-2xl mx-auto relative overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-pink-500/5 pointer-events-none"></div>
+            
+            <div class="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-slate-700/50 to-slate-800/50 flex items-center justify-center relative">
+                <div class="absolute inset-0 rounded-3xl bg-blue-500/10 animate-pulse pointer-events-none"></div>
+                <i class="bi bi-grid-3x3 text-5xl text-slate-400 relative z-10"></i>
+            </div>
+            
+            <h3 class="font-display font-bold text-2xl text-white mb-3">No Modules Available</h3>
+            <p class="text-slate-400 mb-8 max-w-md mx-auto text-lg leading-relaxed">
+                You haven't enrolled in any courses with modules yet. Explore our diploma programs to get started.
+            </p>
+            
+            <a href="{{ url_for('courses.index') }}" class="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl font-semibold text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all hover:-translate-y-0.5">
+                <i class="bi bi-plus-circle"></i>
+                Browse Courses
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+    /* Slide Up Animation */
+    @keyframes slide-up {
+        from { 
+            opacity: 0; 
+            transform: translateY(20px); 
+        }
+        to { 
+            opacity: 1; 
+            transform: translateY(0); 
+        }
+    }
+    
+    /* Float Animation */
+    @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+    }
+    
+    .float-element {
+        animation: float 6s ease-in-out infinite;
+    }
+    
+    /* Glass Panel Enhancement */
+    .glass-panel {
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+    
+    /* Line Clamp Utility */
+    .line-clamp-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+</style>
+
+<script>
+    // Animate progress bars on load
+    document.addEventListener('DOMContentLoaded', function() {
+        const progressBars = document.querySelectorAll('.bg-gradient-to-r.from-blue-500');
+        
+        progressBars.forEach((bar, index) => {
+            const finalWidth = bar.style.width;
+            bar.style.width = '0%';
+            setTimeout(() => {
+                bar.style.width = finalWidth;
+            }, 300 + (index * 100));
+        });
+    });
+</script>
+{% endblock %}

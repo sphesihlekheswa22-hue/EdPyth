@@ -6,48 +6,61 @@
 
 {% block content %}
 <!-- Course Hero Header -->
-<div class="glass-card rounded-3xl p-8 mb-6 relative overflow-hidden">
-    <!-- Background Gradient -->
-    <div class="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10"></div>
-    <div class="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-blue-500/20 to-transparent rounded-full blur-3xl -mr-48 -mt-48"></div>
+<div class="glass-card-premium rounded-3xl p-8 mb-6 relative overflow-hidden card-hover-lift">
+    <!-- Premium Background Effects -->
+    <div class="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10 pointer-events-none"></div>
+    <div class="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-blue-500/20 to-transparent rounded-full blur-3xl -mr-48 -mt-48 pointer-events-none"></div>
+    <div class="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-purple-500/10 to-transparent rounded-full blur-3xl -ml-32 -mb-32 pointer-events-none"></div>
+    <!-- Animated mesh gradient overlay -->
+    <div class="absolute inset-0 opacity-30 pointer-events-none" style="background: radial-gradient(ellipse at 30% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%);"></div>
     
     <div class="relative z-10">
         <div class="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
             <div class="flex-1">
                 <!-- Course Code Badge -->
                 <div class="flex items-center gap-3 mb-4">
-                    <span class="px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 text-sm font-mono border border-blue-500/30">
+                    <span class="px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 text-sm font-mono border border-blue-500/30 backdrop-blur-sm shimmer-premium">
                         {{ course.code }}
                     </span>
                     {% if course.semester %}
-                    <span class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-400 text-sm border border-white/10">
+                    <span class="px-3 py-1.5 rounded-lg bg-slate-800/80 text-slate-400 text-sm border border-white/10 backdrop-blur-sm">
                         {{ course.semester }} {{ course.year }}
                     </span>
                     {% endif %}
-                    <span class="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-sm border border-emerald-500/30 flex items-center gap-1">
+                    <span class="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-sm border border-emerald-500/30 flex items-center gap-1 backdrop-blur-sm glow-emerald">
                         <i class="bi bi-award-fill"></i>
                         {{ course.credits }} Credits
                     </span>
                 </div>
                 
-                <h1 class="text-4xl font-bold text-white mb-4 font-display">{{ course.name }}</h1>
+                <h1 class="text-4xl font-bold text-white mb-4 font-display text-gradient">{{ course.name }}</h1>
                 <p class="text-slate-400 text-lg mb-6 max-w-2xl leading-relaxed">{{ course.description|default('No description available.') }}</p>
                 
                 <!-- Course Meta -->
                 <div class="flex flex-wrap items-center gap-6">
-                    <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-white font-bold">
-                            {{ course.lecturer.user.first_name[0] if course.lecturer else '?' }}{{ course.lecturer.user.last_name[0] if course.lecturer else '' }}
+                    <div class="flex items-center gap-3 group">
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-white font-bold shadow-lg shadow-purple-500/20 group-hover:scale-110 transition-transform icon-bounce">
+                            {% if lecturers and lecturers[0].user %}
+                                {{ lecturers[0].user.first_name[0] if lecturers[0].user.first_name else '' }}{{ lecturers[0].user.last_name[0] if lecturers[0].user.last_name else '' }}
+                            {% else %}
+                                ?
+                            {% endif %}
                         </div>
                         <div>
                             <p class="text-sm text-slate-500">Instructor</p>
-                            <p class="text-white font-medium">{{ course.lecturer.user.full_name if course.lecturer else 'TBA' }}</p>
+                            <p class="text-white font-medium group-hover:text-purple-300 transition-colors">
+                                {% if lecturers and lecturers[0].user %}
+                                    {{ lecturers[0].user.full_name }}
+                                {% else %}
+                                    TBA
+                                {% endif %}
+                            </p>
                         </div>
                     </div>
                     
-                    <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center">
-                            <i class="bi bi-people-fill text-blue-400 text-xl"></i>
+                    <div class="flex items-center gap-3 group">
+                        <div class="w-12 h-12 rounded-xl bg-slate-800/80 backdrop-blur-sm flex items-center justify-center border border-white/10 group-hover:scale-110 transition-transform">
+                            <i class="bi bi-people-fill text-blue-400 text-xl group-hover:animate-pulse"></i>
                         </div>
                         <div>
                             <p class="text-sm text-slate-500">Enrolled</p>
@@ -55,9 +68,9 @@
                         </div>
                     </div>
                     
-                    <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center">
-                            <i class="bi bi-book-fill text-emerald-400 text-xl"></i>
+                    <div class="flex items-center gap-3 group">
+                        <div class="w-12 h-12 rounded-xl bg-slate-800/80 backdrop-blur-sm flex items-center justify-center border border-white/10 group-hover:scale-110 transition-transform">
+                            <i class="bi bi-book-fill text-emerald-400 text-xl group-hover:animate-pulse"></i>
                         </div>
                         <div>
                             <p class="text-sm text-slate-500">Modules</p>
@@ -69,65 +82,118 @@
             
             <!-- Enrollment/Action Card -->
             <div class="lg:w-80 flex-shrink-0">
-                <div class="glass-card rounded-2xl p-6 bg-white/5 border border-white/10">
+                <div class="glass-card-premium rounded-2xl p-6 bg-white/5 border border-white/10 relative overflow-hidden">
+                    <!-- Subtle animated gradient -->
+                    <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 animate-pulse-slow pointer-events-none"></div>
                     {% if current_user.role == 'student' %}
                         {% if is_enrolled %}
-                            <div class="flex items-center gap-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 mb-4">
-                                <div class="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                            <div class="relative z-10 flex items-center gap-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 mb-4 backdrop-blur-sm">
+                                <div class="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center animate-pulse">
                                     <i class="bi bi-check-circle-fill text-emerald-400 text-lg"></i>
                                 </div>
                                 <div>
                                     <p class="text-sm font-medium text-emerald-300">You're Enrolled!</p>
-                                    <p class="text-xs text-slate-500">Progress: {{ enrollment_progress|default(0) }}%</p>
+                                    <p class="text-xs text-slate-500">Progress: {{ course.average|default(0) }}%</p>
                                 </div>
                             </div>
                             
-                            <div class="h-2 bg-slate-800 rounded-full overflow-hidden mb-4">
-                                <div class="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full" style="width: {{ enrollment_progress|default(0) }}%"></div>
+                            <div class="relative z-10 h-2 bg-slate-800 rounded-full overflow-hidden mb-4">
+                                <div class="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-1000 shimmer-premium" style="width: {{ course.average|default(0) }}%"></div>
                             </div>
                             
                             <div class="space-y-2">
-                                <a href="{{ url_for('materials.list_materials', course_id=course.id) }}" class="flex items-center gap-3 p-3 rounded-xl bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-all group">
+                                <a href="{{ url_for('materials.list_materials_by_course', course_id=course.id) }}" class="flex items-center gap-3 p-3 rounded-xl bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-all group">
                                     <i class="bi bi-folder-fill text-lg group-hover:scale-110 transition-transform"></i>
                                     <span class="font-medium">Course Materials</span>
                                     <i class="bi bi-arrow-right ml-auto opacity-0 group-hover:opacity-100 transition-opacity"></i>
                                 </a>
                                 
-                                <a href="{{ url_for('quizzes.list_quizzes', course_id=course.id) }}" class="flex items-center gap-3 p-3 rounded-xl bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-all group">
+                                <a href="{{ url_for('quizzes.list_quizzes_by_course', course_id=course.id) }}" class="flex items-center gap-3 p-3 rounded-xl bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-all group">
                                     <i class="bi bi-clipboard-check-fill text-lg group-hover:scale-110 transition-transform"></i>
                                     <span class="font-medium">Quizzes & Tests</span>
-                                    <span class="ml-auto text-xs bg-purple-500/30 px-2 py-1 rounded-full">{{ pending_quizzes|default(3) }} pending</span>
+                                    {% if pending_quizzes is defined %}
+                                    <span class="ml-auto text-xs bg-purple-500/30 px-2 py-1 rounded-full">{{ pending_quizzes }} pending</span>
+                                    {% endif %}
                                 </a>
                                 
-                                <a href="{{ url_for('attendance.course_attendance', course_id=course.id) }}" class="flex items-center gap-3 p-3 rounded-xl bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 transition-all group">
+                                <a href="{{ url_for('assignments.course_overview', course_id=course.id) }}" class="flex items-center gap-3 p-3 rounded-xl bg-pink-500/20 text-pink-400 hover:bg-pink-500/30 transition-all group">
+                                    <i class="bi bi-journal-text text-lg group-hover:scale-110 transition-transform"></i>
+                                    <span class="font-medium">Assignments</span>
+                                </a>
+                                
+                                <a href="{{ url_for('attendance.course_attendance_redirect', course_id=course.id) }}" class="flex items-center gap-3 p-3 rounded-xl bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 transition-all group">
                                     <i class="bi bi-calendar-check-fill text-lg group-hover:scale-110 transition-transform"></i>
                                     <span class="font-medium">My Attendance</span>
-                                    <span class="ml-auto text-xs text-amber-300">{{ my_attendance|default(85) }}%</span>
+                                    {% if my_attendance is defined %}
+                                    <span class="ml-auto text-xs text-amber-300">{{ my_attendance }}%</span>
+                                    {% endif %}
                                 </a>
                             </div>
                             
                             <form method="POST" action="{{ url_for('courses.unenroll', course_id=course.id) }}" class="mt-4 pt-4 border-t border-white/10">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                 <button type="submit" onclick="return confirm('Are you sure you want to unenroll? Your progress will be saved.')" class="w-full flex items-center justify-center gap-2 p-3 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-all text-sm font-medium">
                                     <i class="bi bi-box-arrow-right"></i>
                                     Unenroll from Course
                                 </button>
                             </form>
                         {% else %}
-                            <div class="text-center mb-6">
-                                <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-blue-500/20 flex items-center justify-center">
-                                    <i class="bi bi-mortarboard-fill text-3xl text-blue-400"></i>
+                            {% if active_enrolled_course %}
+                                {# Student already enrolled in another course - show restriction message #}
+                                <div class="text-center mb-6">
+                                    <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-amber-500/20 flex items-center justify-center">
+                                        <i class="bi bi-exclamation-triangle-fill text-3xl text-amber-400"></i>
+                                    </div>
+                                    <h3 class="text-xl font-bold text-white mb-2">Already Enrolled</h3>
+                                    <p class="text-sm text-slate-400 mb-4">You can only enroll in one course at a time.</p>
                                 </div>
-                                <h3 class="text-xl font-bold text-white mb-2">Join This Course</h3>
-                                <p class="text-sm text-slate-400">Get access to all materials, quizzes, and track your progress</p>
-                            </div>
-                            
-                            <form method="POST" action="{{ url_for('courses.enroll', course_id=course.id) }}">
-                                <button type="submit" class="w-full p-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 mb-3">
-                                    <i class="bi bi-plus-circle-fill text-lg"></i>
-                                    Enroll Now
-                                </button>
-                                <p class="text-xs text-slate-500 text-center">Free enrollment • Instant access</p>
-                            </form>
+                                
+                                <div class="p-4 rounded-xl bg-slate-800/50 border border-white/10 mb-4">
+                                    <p class="text-xs text-slate-500 mb-2">Current Enrollment:</p>
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                                            <i class="bi bi-book-fill text-emerald-400"></i>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-white font-medium truncate">{{ active_enrolled_course.name }}</p>
+                                            <p class="text-xs text-slate-500">{{ active_enrolled_course.code }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="space-y-2">
+                                    <a href="{{ url_for('courses.detail', course_id=active_enrolled_course.id) }}" class="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-all text-sm font-medium">
+                                        <i class="bi bi-arrow-left"></i>
+                                        Go to My Course
+                                    </a>
+                                    
+                                    <form method="POST" action="{{ url_for('courses.unenroll', course_id=active_enrolled_course.id) }}">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                        <button type="submit" onclick="return confirm('Are you sure you want to cancel your enrollment in {{ active_enrolled_course.name }}? You can then enroll in this course.')" class="w-full flex items-center justify-center gap-2 p-3 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-all text-sm font-medium">
+                                            <i class="bi bi-x-circle"></i>
+                                            Cancel Current Enrollment
+                                        </button>
+                                    </form>
+                                </div>
+                            {% else %}
+                                {# No active enrollment - allow enrollment #}
+                                <div class="text-center mb-6">
+                                    <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-blue-500/20 flex items-center justify-center">
+                                        <i class="bi bi-mortarboard-fill text-3xl text-blue-400"></i>
+                                    </div>
+                                    <h3 class="text-xl font-bold text-white mb-2">Join This Course</h3>
+                                    <p class="text-sm text-slate-400">Get access to all materials, quizzes, and track your progress</p>
+                                </div>
+                                
+                                <form method="POST" action="{{ url_for('courses.enroll', course_id=course.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <button type="submit" class="w-full p-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 mb-3">
+                                        <i class="bi bi-plus-circle-fill text-lg"></i>
+                                        Enroll Now
+                                    </button>
+                                    <p class="text-xs text-slate-500 text-center">Free enrollment • Instant access</p>
+                                </form>
+                            {% endif %}
                         {% endif %}
                         
                     {% elif current_user.role == 'lecturer' %}
@@ -137,22 +203,37 @@
                         </h3>
                         
                         <div class="space-y-2">
-                            <a href="{{ url_for('materials.upload_material', course_id=course.id) }}" class="flex items-center gap-3 p-3 rounded-xl bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-all group">
+                            <a href="{{ url_for('materials.upload_material_course_legacy', course_id=course.id) }}" class="flex items-center gap-3 p-3 rounded-xl bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-all group">
                                 <i class="bi bi-cloud-upload-fill text-lg"></i>
                                 <span class="font-medium">Upload Material</span>
                             </a>
                             
-                            <a href="{{ url_for('quizzes.create_quiz', course_id=course.id) }}" class="flex items-center gap-3 p-3 rounded-xl bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-all group">
+                            {% if lecturer_default_module %}
+                            <a href="{{ url_for('quizzes.create_quiz', module_id=lecturer_default_module.id) }}" class="flex items-center gap-3 p-3 rounded-xl bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-all group">
                                 <i class="bi bi-question-circle-fill text-lg"></i>
                                 <span class="font-medium">Create Quiz</span>
                             </a>
+                            {% else %}
+                            <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-900/35 border border-white/10 text-slate-400">
+                                <i class="bi bi-info-circle-fill text-slate-500 mt-0.5"></i>
+                                <div>
+                                    <p class="text-sm font-semibold text-slate-200">No module assigned</p>
+                                    <p class="text-xs text-slate-500 mt-0.5">Ask an admin to assign you to a module to create quizzes, assignments, attendance, or marks.</p>
+                                </div>
+                            </div>
+                            {% endif %}
                             
-                            <a href="{{ url_for('attendance.record_attendance', course_id=course.id) }}" class="flex items-center gap-3 p-3 rounded-xl bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-all group">
+                            <a href="{{ url_for('assignments.course_overview', course_id=course.id) }}" class="flex items-center gap-3 p-3 rounded-xl bg-pink-500/20 text-pink-400 hover:bg-pink-500/30 transition-all group">
+                                <i class="bi bi-journal-text text-lg"></i>
+                                <span class="font-medium">Assignments</span>
+                            </a>
+                            
+                            <a href="{{ url_for('attendance.record_attendance_course_legacy', course_id=course.id) }}" class="flex items-center gap-3 p-3 rounded-xl bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-all group">
                                 <i class="bi bi-calendar-check-fill text-lg"></i>
                                 <span class="font-medium">Record Attendance</span>
                             </a>
                             
-                            <a href="{{ url_for('marks.enter_marks', course_id=course.id) }}" class="flex items-center gap-3 p-3 rounded-xl bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 transition-all group">
+                            <a href="{{ url_for('marks.enter_marks_course_legacy', course_id=course.id) }}" class="flex items-center gap-3 p-3 rounded-xl bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 transition-all group">
                                 <i class="bi bi-pencil-square text-lg"></i>
                                 <span class="font-medium">Enter Marks</span>
                             </a>
@@ -192,35 +273,42 @@
     </div>
 </div>
 
+{% if current_user.role != 'student' or is_enrolled %}
 <!-- Tab Navigation -->
-<div class="glass-card rounded-2xl p-2 mb-6">
+<div class="glass-card-premium rounded-2xl p-2 mb-6">
     <div class="flex flex-wrap gap-1">
-        <button onclick="switchTab('modules')" id="tab-modules" class="tab-btn flex-1 min-w-[120px] px-4 py-3 rounded-xl text-sm font-medium transition-all bg-blue-500/20 text-blue-400 flex items-center justify-center gap-2">
+        <button onclick="switchTab('modules')" id="tab-modules" class="tab-btn flex-1 min-w-[120px] px-4 py-3 rounded-xl text-sm font-semibold transition-all bg-blue-500/20 text-blue-300 flex items-center justify-center gap-2">
             <i class="bi bi-grid-3x3-gap-fill"></i>
             Modules
         </button>
-        <a href="{{ url_for('materials.list_materials', course_id=course.id) }}" class="tab-btn flex-1 min-w-[120px] px-4 py-3 rounded-xl text-sm font-medium transition-all text-slate-400 hover:text-white hover:bg-white/5 flex items-center justify-center gap-2">
+        <a href="{{ url_for('materials.list_materials_by_course', course_id=course.id) }}" class="tab-btn flex-1 min-w-[120px] px-4 py-3 rounded-xl text-sm font-medium transition-all text-slate-400 hover:text-white hover:bg-white/5 flex items-center justify-center gap-2">
             <i class="bi bi-folder-fill"></i>
             Materials
         </a>
-        <a href="{{ url_for('quizzes.list_quizzes', course_id=course.id) }}" class="tab-btn flex-1 min-w-[120px] px-4 py-3 rounded-xl text-sm font-medium transition-all text-slate-400 hover:text-white hover:bg-white/5 flex items-center justify-center gap-2">
+        <a href="{{ url_for('quizzes.list_quizzes_by_course', course_id=course.id) }}" class="tab-btn flex-1 min-w-[120px] px-4 py-3 rounded-xl text-sm font-medium transition-all text-slate-400 hover:text-white hover:bg-white/5 flex items-center justify-center gap-2">
             <i class="bi bi-clipboard-check-fill"></i>
             Quizzes
         </a>
-        <a href="{{ url_for('attendance.course_attendance', course_id=course.id) }}" class="tab-btn flex-1 min-w-[120px] px-4 py-3 rounded-xl text-sm font-medium transition-all text-slate-400 hover:text-white hover:bg-white/5 flex items-center justify-center gap-2">
+        <a href="{{ url_for('assignments.course_overview', course_id=course.id) }}" class="tab-btn flex-1 min-w-[120px] px-4 py-3 rounded-xl text-sm font-medium transition-all text-slate-400 hover:text-white hover:bg-white/5 flex items-center justify-center gap-2">
+            <i class="bi bi-journal-text"></i>
+            Assignments
+        </a>
+        <a href="{{ url_for('attendance.course_attendance_redirect', course_id=course.id) }}" class="tab-btn flex-1 min-w-[120px] px-4 py-3 rounded-xl text-sm font-medium transition-all text-slate-400 hover:text-white hover:bg-white/5 flex items-center justify-center gap-2">
             <i class="bi bi-calendar-check-fill"></i>
             Attendance
         </a>
-        <a href="{{ url_for('marks.course_marks', course_id=course.id) }}" class="tab-btn flex-1 min-w-[120px] px-4 py-3 rounded-xl text-sm font-medium transition-all text-slate-400 hover:text-white hover:bg-white/5 flex items-center justify-center gap-2">
+        <a href="{{ url_for('marks.course_marks_redirect', course_id=course.id) }}" class="tab-btn flex-1 min-w-[120px] px-4 py-3 rounded-xl text-sm font-medium transition-all text-slate-400 hover:text-white hover:bg-white/5 flex items-center justify-center gap-2">
             <i class="bi bi-bar-chart-fill"></i>
             Marks
         </a>
     </div>
 </div>
+{% endif %}
 
+{% if current_user.role != 'student' or is_enrolled %}
 <!-- Modules Content -->
 <div id="content-modules" class="tab-content">
-    <div class="glass-card rounded-2xl p-6">
+    <div class="glass-card-premium rounded-2xl p-6">
         <div class="flex items-center justify-between mb-6">
             <div>
                 <h2 class="text-xl font-bold text-white flex items-center gap-2">
@@ -241,60 +329,104 @@
         {% if course.modules %}
         <div class="space-y-4">
             {% for module in course.modules %}
-            <div class="group p-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 transition-all cursor-pointer" onclick="toggleModule({{ module.id }})">
-                <div class="flex items-start justify-between gap-4">
-                    <div class="flex items-start gap-4 flex-1">
-                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center text-blue-400 font-bold border border-blue-500/20 flex-shrink-0">
-                            {{ module.order }}
-                        </div>
-                        <div class="flex-1">
-                            <h3 class="font-semibold text-white group-hover:text-blue-300 transition-colors mb-1">{{ module.title }}</h3>
-                            <p class="text-sm text-slate-400 line-clamp-2">{{ module.description|default('No description available.') }}</p>
-                            
-                            <div class="flex items-center gap-4 mt-3 text-xs text-slate-500">
-                                <span class="flex items-center gap-1">
-                                    <i class="bi bi-clock"></i>
-                                    {{ module.duration|default('2 hours') }}
-                                </span>
-                                <span class="flex items-center gap-1">
-                                    <i class="bi bi-file-text"></i>
-                                    {{ module.materials|default(0) }} materials
-                                </span>
-                                {% if is_enrolled %}
-                                <span class="flex items-center gap-1 {{ 'text-emerald-400' if module.completed else 'text-amber-400' }}">
-                                    <i class="bi bi-{{ 'check-circle-fill' if module.completed else 'circle' }}"></i>
-                                    {{ 'Completed' if module.completed else 'Not started' }}
-                                </span>
-                                {% endif %}
+            <div id="module-{{ module.id }}"
+                 class="group relative rounded-2xl border border-white/6 bg-gradient-to-b from-white/7 to-white/3 hover:from-white/9 hover:to-white/4 transition-all cursor-pointer overflow-hidden"
+                 onclick="toggleModule({{ module.id }})">
+                <!-- subtle left accent -->
+                <div class="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-blue-500/50 via-purple-500/35 to-transparent opacity-70 group-hover:opacity-100 transition-opacity"></div>
+
+                <div class="p-5">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="flex items-start gap-4 flex-1 min-w-0">
+                            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/18 to-purple-500/14 flex items-center justify-center text-blue-300 font-extrabold border border-blue-500/18 flex-shrink-0">
+                                {{ module.order }}
+                            </div>
+
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <h3 class="text-base sm:text-lg font-semibold text-white tracking-tight group-hover:text-blue-200 transition-colors truncate">
+                                            {{ module.title }}
+                                        </h3>
+                                        <p class="text-sm text-slate-400 mt-1 line-clamp-2">
+                                            {{ module.description or 'No description yet.' }}
+                                        </p>
+                                    </div>
+
+                                    {% if is_enrolled %}
+                                    <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold border {{ 'bg-emerald-500/12 text-emerald-300 border-emerald-500/20' if module.completed else 'bg-amber-500/12 text-amber-300 border-amber-500/20' }}">
+                                        <i class="bi bi-{{ 'check-circle-fill' if module.completed else 'circle' }}"></i>
+                                        {{ 'Completed' if module.completed else 'Not started' }}
+                                    </span>
+                                    {% endif %}
+                                </div>
+
+                                <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 text-xs text-slate-500">
+                                    <span class="inline-flex items-center gap-1.5">
+                                        <i class="bi bi-file-text"></i>
+                                        {{ module.materials|length }} materials
+                                    </span>
+                                    {% if module.materials_list and module.materials_list|length > 0 %}
+                                    <span class="inline-flex items-center gap-1.5">
+                                        <i class="bi bi-unlock"></i>
+                                        Ready to start
+                                    </span>
+                                    {% endif %}
+                                </div>
                             </div>
                         </div>
+
+                        <button type="button"
+                                class="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-900/35 border border-white/10 text-slate-400 group-hover:text-white group-hover:border-white/18 transition-all"
+                                aria-label="Toggle module"
+                                tabindex="-1">
+                            <i class="bi bi-chevron-down transition-transform duration-200" id="icon-module-{{ module.id }}"></i>
+                        </button>
                     </div>
-                    
-                    <div class="flex items-center gap-2">
-                        <i class="bi bi-chevron-down text-slate-500 group-hover:text-white transition-all transform" id="icon-module-{{ module.id }}"></i>
-                    </div>
-                </div>
-                
-                <!-- Expanded Content -->
-                <div id="module-content-{{ module.id }}" class="hidden mt-4 pt-4 border-t border-white/10">
-                    <div class="pl-16 space-y-2">
-                        {% if module.materials_list %}
-                            {% for material in module.materials_list %}
-                            <a href="{{ url_for('materials.download_material', material_id=material.id) }}" class="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-all">
-                                <i class="bi bi-{{ 'file-earmark-pdf' if material.type == 'pdf' else 'file-earmark-play' if material.type == 'video' else 'file-earmark-text' }} text-slate-400"></i>
-                                <span class="text-sm text-slate-300">{{ material.title }}</span>
-                            </a>
-                            {% endfor %}
-                        {% else %}
-                            <p class="text-sm text-slate-500 italic">No materials in this module yet.</p>
-                        {% endif %}
-                        
-                        {% if current_user.role in ['lecturer', 'admin'] %}
-                        <a href="{{ url_for('materials.upload_material', course_id=course.id, module_id=module.id) }}" class="flex items-center gap-3 p-3 rounded-lg border border-dashed border-white/20 text-slate-500 hover:text-white hover:border-white/40 transition-all">
-                            <i class="bi bi-plus-lg"></i>
-                            <span class="text-sm">Add Material</span>
-                        </a>
-                        {% endif %}
+
+                    <!-- Expanded Content (animated) -->
+                    <div id="module-content-{{ module.id }}" class="max-h-0 opacity-0 overflow-hidden transition-all duration-300 ease-out">
+                        <div class="mt-4 pt-4 border-t border-white/10 pl-16">
+                            <div class="flex items-center justify-between gap-3 mb-3">
+                                <div class="text-sm font-semibold text-white/90 flex items-center gap-2">
+                                    <i class="bi bi-folder2-open text-slate-400"></i>
+                                    Materials
+                                </div>
+                                {% if current_user.role in ['lecturer', 'admin'] %}
+                                <a href="{{ url_for('materials.upload_material', module_id=module.id) }}"
+                                   class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-500/14 text-blue-300 border border-blue-500/18 hover:bg-blue-500/20 transition-all text-xs font-semibold"
+                                   onclick="event.stopPropagation();">
+                                    <i class="bi bi-plus-lg"></i>
+                                    Add material
+                                </a>
+                                {% endif %}
+                            </div>
+
+                            {% if module.materials_list %}
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {% for material in module.materials_list %}
+                                <a href="{{ url_for('materials.download_material', material_id=material.id) }}"
+                                   class="flex items-center gap-3 p-3 rounded-xl bg-white/4 hover:bg-white/7 border border-white/6 hover:border-white/12 transition-all"
+                                   onclick="event.stopPropagation();">
+                                    <div class="w-9 h-9 rounded-xl bg-slate-900/35 border border-white/10 flex items-center justify-center flex-shrink-0">
+                                        <i class="bi bi-{{ 'file-earmark-pdf' if material.type == 'pdf' else 'file-earmark-play' if material.type == 'video' else 'file-earmark-text' }} text-slate-300"></i>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <div class="text-sm text-slate-200 font-medium truncate">{{ material.title }}</div>
+                                        <div class="text-xs text-slate-500 mt-0.5 truncate">
+                                            {{ 'PDF' if material.type == 'pdf' else 'Video' if material.type == 'video' else 'Document' }}
+                                        </div>
+                                    </div>
+                                    <i class="bi bi-arrow-up-right text-slate-600 ml-auto"></i>
+                                </a>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="rounded-xl bg-slate-900/25 border border-white/10 p-4 text-sm text-slate-500">
+                                No materials in this module yet.
+                            </div>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -318,6 +450,33 @@
         {% endif %}
     </div>
 </div>
+{% else %}
+<!-- Non-enrolled Student View -->
+<div class="glass-card rounded-2xl p-8 text-center">
+    <div class="w-24 h-24 mx-auto mb-6 rounded-full bg-blue-500/20 flex items-center justify-center">
+        <i class="bi bi-lock-fill text-4xl text-blue-400"></i>
+    </div>
+    <h2 class="text-2xl font-bold text-white mb-4">Course Content Locked</h2>
+    <p class="text-slate-400 mb-6 max-w-md mx-auto">
+        Enroll in this course to access all modules, materials, quizzes, and track your progress.
+        You'll get instant access to all learning resources.
+    </p>
+    <div class="flex flex-wrap items-center justify-center gap-4 text-sm text-slate-500">
+        <span class="flex items-center gap-2">
+            <i class="bi bi-grid-3x3-gap-fill text-blue-400"></i>
+            {{ course.modules|length|default(0) }} Modules
+        </span>
+        <span class="flex items-center gap-2">
+            <i class="bi bi-folder-fill text-emerald-400"></i>
+            {{ materials_count }} Materials
+        </span>
+        <span class="flex items-center gap-2">
+            <i class="bi bi-clipboard-check-fill text-purple-400"></i>
+            {{ quizzes_count }} Quizzes
+        </span>
+    </div>
+</div>
+{% endif %}
 
 <!-- AI Assistant Floating Button -->
 {% if is_enrolled %}
@@ -337,13 +496,33 @@
         const content = document.getElementById(`module-content-${moduleId}`);
         const icon = document.getElementById(`icon-module-${moduleId}`);
         
-        if (content.classList.contains('hidden')) {
-            content.classList.remove('hidden');
-            icon.classList.add('rotate-180');
-        } else {
-            content.classList.add('hidden');
+        const isOpen = content.classList.contains('opacity-100');
+
+        if (isOpen) {
+            content.classList.remove('opacity-100');
+            content.classList.add('opacity-0');
+            content.style.maxHeight = '0px';
             icon.classList.remove('rotate-180');
+            return;
         }
+
+        // Close any other open module (keeps the list tidy)
+        document.querySelectorAll('[id^="module-content-"]').forEach(el => {
+            if (el.id !== `module-content-${moduleId}`) {
+                el.classList.remove('opacity-100');
+                el.classList.add('opacity-0');
+                el.style.maxHeight = '0px';
+            }
+        });
+        document.querySelectorAll('[id^="icon-module-"]').forEach(ic => {
+            if (ic.id !== `icon-module-${moduleId}`) ic.classList.remove('rotate-180');
+        });
+
+        // Open selected module (animate by maxHeight + opacity)
+        content.classList.remove('opacity-0');
+        content.classList.add('opacity-100');
+        content.style.maxHeight = `${content.scrollHeight}px`;
+        icon.classList.add('rotate-180');
     }
     
     // Tab switching (for inline tabs)
@@ -383,7 +562,7 @@
     // Smooth scroll for module expansion
     document.querySelectorAll('[id^="module-content-"]').forEach(el => {
         el.addEventListener('transitionend', () => {
-            if (!el.classList.contains('hidden')) {
+            if (el.classList.contains('opacity-100')) {
                 el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
         });

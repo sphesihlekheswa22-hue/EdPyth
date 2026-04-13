@@ -1,24 +1,28 @@
 {% extends "base.html" %}
 
-{% block title %}{{ course.name }} - Quizzes | EduMind AI{% endblock %}
+{% block title %}{{ module.title if module else course.name }} - Quizzes | EduMind AI{% endblock %}
 
-{% block page_title %}Course Quizzes{% endblock %}
+{% block page_title %}{{ course.name }} - {{ module.title if module else 'Quizzes' }}{% endblock %}
 
 {% block content %}
 <!-- Breadcrumb & Actions -->
 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 animate-slide-up">
   <nav aria-label="Breadcrumb" class="flex items-center gap-2 text-sm text-slate-400">
-    <a href="{{ url_for('courses.detail', course_id=course.id) }}" 
+    <a href="{{ url_for('courses.detail', course_id=course.id) }}"
        class="hover:text-white transition-colors flex items-center gap-1 group">
       <i class="bi bi-arrow-left group-hover:-translate-x-1 transition-transform"></i>
       <span>Back to Course</span>
     </a>
     <span class="text-slate-600">/</span>
+    {% if module %}
+    <span class="text-slate-400">{{ module.title }}</span>
+    <span class="text-slate-600">/</span>
+    {% endif %}
     <span class="text-white font-medium">Quizzes</span>
   </nav>
   
-  {% if current_user.role in ['lecturer', 'admin'] %}
-  <a href="{{ url_for('quizzes.create_quiz', course_id=course.id) }}" 
+  {% if current_user.role in ['lecturer', 'admin'] and module %}
+  <a href="{{ url_for('quizzes.create_quiz', module_id=module.id) }}"
      class="soft-button px-5 py-2.5 rounded-xl text-white font-medium inline-flex items-center gap-2 hover:scale-105 transition-transform">
     <i class="bi bi-plus-circle-fill"></i>
     Create Quiz
@@ -26,15 +30,27 @@
   {% endif %}
 </div>
 
-<!-- Course Header with Stats -->
+<!-- Course/Module Header with Stats -->
 <div class="glass-card rounded-3xl p-6 mb-8 animate-slide-up relative overflow-hidden">
   <div class="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
   
   <div class="relative z-10">
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>
-        <h2 class="text-2xl font-display font-bold text-white mb-1">{{ course.name }}</h2>
-        <p class="text-slate-400">{{ course.description or 'No description available' }}</p>
+        <h2 class="text-2xl font-display font-bold text-white mb-1">
+          {% if module %}
+            {{ module.title }} - Quizzes
+          {% else %}
+            {{ course.name }}
+          {% endif %}
+        </h2>
+        <p class="text-slate-400">
+          {% if module %}
+            {{ module.description or course.description or 'No description available' }}
+          {% else %}
+            {{ course.description or 'No description available' }}
+          {% endif %}
+        </p>
       </div>
       
       <!-- Quick Stats -->
@@ -104,8 +120,8 @@
       </div>
       <div class="p-3 rounded-xl bg-white/5 text-center">
         <i class="bi bi-clock text-purple-400 mb-1 block"></i>
-        <span class="text-lg font-bold text-white block">{{ quiz.time_limit }}</span>
-        <span class="text-xs text-slate-500">Minutes</span>
+        <span class="text-lg font-bold text-white block">{{ quiz.format_timer_display() }}</span>
+        <span class="text-xs text-slate-500">Time limit</span>
       </div>
       <div class="p-3 rounded-xl bg-white/5 text-center">
         <i class="bi bi-bullseye text-amber-400 mb-1 block"></i>
@@ -122,20 +138,29 @@
           <i class="bi bi-check-circle-fill"></i>
           <span class="font-medium text-sm">Completed</span>
         </div>
-        <a href="{{ url_for('quizzes.take_quiz', quiz_id=quiz.id) }}" 
+        <a href="{{ url_for('quizzes.quiz_result', result_id=results[quiz.id].id) }}" 
            class="text-sm font-medium text-slate-300 hover:text-white flex items-center gap-1 group">
           View Results
           <i class="bi bi-arrow-right group-hover:translate-x-1 transition-transform"></i>
         </a>
         {% elif quiz.is_published %}
-        <span class="text-sm text-slate-500">
-          Due: {{ quiz.due_date.strftime('%b %d') if quiz.due_date else 'No deadline' }}
+        {% set past_due = quiz.due_date and now and (now > quiz.due_date) %}
+        <span class="text-sm {% if past_due %}text-amber-400{% else %}text-slate-500{% endif %}">
+          Due: {{ quiz.due_date.strftime('%b %d, %H:%M') if quiz.due_date else 'No deadline' }}
+          {% if past_due %}<span class="block text-xs mt-0.5">Past due — view only</span>{% endif %}
         </span>
+        {% if past_due %}
+        <a href="{{ url_for('quizzes.preview_quiz', quiz_id=quiz.id) }}" 
+           class="soft-button px-4 py-2 rounded-xl text-amber-200 text-sm font-medium inline-flex items-center gap-2 border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 transition-transform">
+          <i class="bi bi-eye"></i> View quiz
+        </a>
+        {% else %}
         <a href="{{ url_for('quizzes.take_quiz', quiz_id=quiz.id) }}" 
            class="soft-button px-4 py-2 rounded-xl text-white text-sm font-medium inline-flex items-center gap-2 hover:scale-105 transition-transform">
           Start Quiz
           <i class="bi bi-arrow-right"></i>
         </a>
+        {% endif %}
         {% else %}
         <span class="text-slate-500 text-sm flex items-center gap-2">
           <i class="bi bi-lock"></i>
@@ -198,8 +223,8 @@
     Your instructor hasn't published any quizzes yet. Check back soon!
     {% endif %}
   </p>
-  {% if current_user.role in ['lecturer', 'admin'] %}
-  <a href="{{ url_for('quizzes.create_quiz', course_id=course.id) }}" 
+  {% if current_user.role in ['lecturer', 'admin'] and module %}
+  <a href="{{ url_for('quizzes.create_quiz', module_id=module.id) }}"
      class="soft-button px-6 py-3 rounded-xl text-white font-medium inline-flex items-center gap-2 hover:scale-105 transition-transform">
     <i class="bi bi-plus-circle-fill"></i>
     Create First Quiz
@@ -222,6 +247,7 @@
         Cancel
       </button>
       <form id="publishForm" method="POST" class="flex-1">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <button type="submit" class="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white font-medium transition-colors">
           Publish Now
         </button>
@@ -244,6 +270,7 @@
         Cancel
       </button>
       <form id="deleteForm" method="POST" class="flex-1">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <button type="submit" class="w-full py-2.5 rounded-xl bg-red-500 hover:bg-red-400 text-white font-medium transition-colors">
           Delete
         </button>

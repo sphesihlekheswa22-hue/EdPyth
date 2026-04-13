@@ -1,0 +1,376 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Enrollments - EduMind AI{% endblock %}
+
+{% block page_title %}Enrollment Management{% endblock %}
+
+{% block content %}
+<!-- Stats Overview -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="glass-card rounded-2xl p-5 flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+            <i class="bi bi-people-fill text-blue-400 text-xl"></i>
+        </div>
+        <div>
+            <p class="text-2xl font-bold text-white">{{ enrollments|length|default(0) }}</p>
+            <p class="text-xs text-slate-400 uppercase tracking-wider">Total Enrollments</p>
+        </div>
+    </div>
+    
+    <div class="glass-card rounded-2xl p-5 flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+            <i class="bi bi-check-circle-fill text-emerald-400 text-xl"></i>
+        </div>
+        <div>
+            <p class="text-2xl font-bold text-white">{{ enrollments|selectattr("status", "equalto", "active")|list|length|default(0) }}</p>
+            <p class="text-xs text-slate-400 uppercase tracking-wider">Active</p>
+        </div>
+    </div>
+    
+    <div class="glass-card rounded-2xl p-5 flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+            <i class="bi bi-clock-history text-amber-400 text-xl"></i>
+        </div>
+        <div>
+            <p class="text-2xl font-bold text-white">{{ enrollments|selectattr("status", "equalto", "pending")|list|length|default(0) }}</p>
+            <p class="text-xs text-slate-400 uppercase tracking-wider">Pending</p>
+        </div>
+    </div>
+    
+    <button onclick="openEnrollModal()" class="glass-card rounded-2xl p-5 flex items-center gap-4 hover:bg-white/5 transition-colors group text-left">
+        <div class="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+            <i class="bi bi-plus-lg text-purple-400 text-xl"></i>
+        </div>
+        <div>
+            <p class="text-sm font-semibold text-purple-300">New Enrollment</p>
+            <p class="text-xs text-slate-400">Add student to course</p>
+        </div>
+    </button>
+</div>
+
+<!-- Filters & Search Toolbar -->
+<div class="glass-card rounded-2xl p-4 mb-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+    <div class="flex items-center gap-3 flex-1 max-w-2xl">
+        <div class="relative flex-1 group">
+            <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors"></i>
+            <input type="text" id="enrollmentSearch" placeholder="Search by student name, course, or ID..." 
+                class="w-full pl-10 pr-4 py-2.5 bg-slate-900/50 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all">
+        </div>
+        
+        <select id="courseFilter" title="Filter by course" aria-label="Filter by course" class="px-4 py-2.5 bg-slate-900/50 border border-white/10 rounded-xl text-sm text-slate-300 focus:outline-none focus:border-blue-500/50 min-w-[140px]">
+            <option value="">All Courses</option>
+            {% for course in courses|default([]) %}
+            <option value="{{ course.id }}">{{ course.code }} - {{ course.name }}</option>
+            {% endfor %}
+        </select>
+        
+        <select id="statusFilter" title="Filter by status" aria-label="Filter by status" class="px-4 py-2.5 bg-slate-900/50 border border-white/10 rounded-xl text-sm text-slate-300 focus:outline-none focus:border-blue-500/50 min-w-[120px]">
+            <option value="">All Status</option>
+            <option value="active">Active</option>
+            <option value="pending">Pending</option>
+            <option value="completed">Completed</option>
+            <option value="dropped">Dropped</option>
+        </select>
+    </div>
+    
+    <div class="flex items-center gap-2">
+        <button onclick="exportEnrollments()" class="px-4 py-2.5 bg-slate-900/50 border border-white/10 rounded-xl text-sm text-slate-300 hover:text-white hover:border-white/20 transition-all flex items-center gap-2">
+            <i class="bi bi-download"></i>
+            <span class="hidden sm:inline">Export</span>
+        </button>
+        <button onclick="bulkAction()" id="bulkActionBtn" class="hidden px-4 py-2.5 bg-blue-500/20 border border-blue-500/30 rounded-xl text-sm text-blue-400 hover:bg-blue-500/30 transition-all flex items-center gap-2">
+            <i class="bi bi-check2-square"></i>
+            <span>Bulk Actions</span>
+        </button>
+    </div>
+</div>
+
+<!-- Enrollments Table -->
+<div class="glass-card rounded-3xl overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse" id="enrollmentsTable">
+            <thead>
+                <tr class="bg-slate-900/30 border-b border-white/10">
+                    <th class="px-6 py-4 w-10">
+                        <input type="checkbox" id="selectAll" title="Select all enrollments" aria-label="Select all enrollments" class="rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500/20" onchange="toggleSelectAll()">
+                    </th>
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Student</th>
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Course</th>
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider text-center">Status</th>
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Enrolled Date</th>
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right">Progress</th>
+                    <th class="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5" id="tableBody">
+                {% if enrollments %}
+                    {% for enrollment in enrollments %}
+                    <tr class="hover:bg-white/5 transition-colors group" data-id="{{ enrollment.id }}" data-status="{{ enrollment.status }}" data-course="{{ enrollment.course_id }}">
+                        <td class="px-6 py-4">
+                            <input type="checkbox" class="enrollment-checkbox rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500/20" title="Select enrollment {{ enrollment.id }}" aria-label="Select enrollment {{ enrollment.id }}" value="{{ enrollment.id }}" onchange="updateBulkButton()">
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+                                    {{ enrollment.student.user.first_name[0] }}{{ enrollment.student.user.last_name[0] }}
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-white">{{ enrollment.student.user.full_name }}</p>
+                                    <p class="text-xs text-slate-500">{{ enrollment.student.student_id|default('ID: ' ~ enrollment.student.id) }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div>
+                                <p class="text-sm font-medium text-white">{{ enrollment.course.name }}</p>
+                                <p class="text-xs text-slate-500">{{ enrollment.course.code }} • {{ enrollment.course.credits }} cr</p>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border
+                                {% if enrollment.status == 'active' %}bg-emerald-500/10 text-emerald-400 border-emerald-500/20
+                                {% elif enrollment.status == 'pending' %}bg-amber-500/10 text-amber-400 border-amber-500/20
+                                {% elif enrollment.status == 'completed' %}bg-blue-500/10 text-blue-400 border-blue-500/20
+                                {% else %}bg-red-500/10 text-red-400 border-red-500/20{% endif %}">
+                                <span class="w-1.5 h-1.5 rounded-full 
+                                    {% if enrollment.status == 'active' %}bg-emerald-400 animate-pulse
+                                    {% elif enrollment.status == 'pending' %}bg-amber-400
+                                    {% elif enrollment.status == 'completed' %}bg-blue-400
+                                    {% else %}bg-red-400{% endif %}">
+                                </span>
+                                {{ enrollment.status|title }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="text-sm text-slate-300">{{ enrollment.enrolled_at|default(enrollment.created_at)|datetimeformat('%b %d, %Y') }}</span>
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <span class="text-sm font-medium text-white">{{ enrollment.progress|default(0) }}%</span>
+                                <div class="w-16 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                    <div class="h-full rounded-full
+                                        {% if enrollment.progress|default(0) >= 80 %}bg-emerald-500
+                                        {% elif enrollment.progress|default(0) >= 50 %}bg-blue-500
+                                        {% else %}bg-amber-500{% endif %}" 
+                                        style="width: {{ enrollment.progress|default(0) }}%">
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <a href="{{ url_for('admin.view_enrollment', enrollment_id=enrollment.id) }}" class="p-2 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all" title="View Details">
+                                    <i class="bi bi-eye-fill"></i>
+                                </a>
+                                <a href="{{ url_for('admin.edit_enrollment', enrollment_id=enrollment.id) }}" class="p-2 text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all" title="Edit">
+                                    <i class="bi bi-pencil-fill"></i>
+                                </a>
+                                <form method="POST" action="{{ url_for('admin.delete_enrollment', enrollment_id=enrollment.id) }}" class="inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <button type="submit" class="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all" title="Remove" onclick="return confirm('Remove this enrollment?')">
+                                        <i class="bi bi-trash-fill"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                <tr id="emptyState">
+                    <td colspan="7" class="px-6 py-16 text-center">
+                        <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-slate-800/50 flex items-center justify-center">
+                            <i class="bi bi-inbox text-3xl text-slate-600"></i>
+                        </div>
+                        <p class="text-slate-400 mb-2 text-lg">No enrollments found</p>
+                        <p class="text-sm text-slate-500 mb-6">Start by enrolling students in courses</p>
+                        <button onclick="openEnrollModal()" class="inline-flex items-center gap-2 px-6 py-3 bg-blue-500/20 text-blue-400 rounded-xl hover:bg-blue-500/30 transition-all border border-blue-500/30">
+                            <i class="bi bi-plus-lg"></i>
+                            Create First Enrollment
+                        </button>
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Pagination -->
+    {% if enrollments and enrollments|length > 10 %}
+    <div class="px-6 py-4 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="text-sm text-slate-400">
+            Showing <span class="text-white font-medium">1</span> to <span class="text-white font-medium">{{ 10 if enrollments|length > 10 else enrollments|length }}</span> of <span class="text-white font-medium">{{ enrollments|length }}</span> enrollments
+        </div>
+        <div class="flex items-center gap-2">
+            <button class="px-3 py-1.5 rounded-lg border border-white/10 text-slate-400 hover:text-white hover:border-white/20 disabled:opacity-50 transition-all" disabled>
+                <i class="bi bi-chevron-left"></i>
+            </button>
+            <button class="px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/30 font-medium">1</button>
+            {% if enrollments|length > 10 %}
+            <button class="px-3 py-1.5 rounded-lg border border-white/10 text-slate-400 hover:text-white hover:border-white/20 transition-all">2</button>
+            {% endif %}
+            {% if enrollments|length > 20 %}
+            <button class="px-3 py-1.5 rounded-lg border border-white/10 text-slate-400 hover:text-white hover:border-white/20 transition-all">3</button>
+            {% endif %}
+            <button class="px-3 py-1.5 rounded-lg border border-white/10 text-slate-400 hover:text-white hover:border-white/20 transition-all">
+                <i class="bi bi-chevron-right"></i>
+            </button>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- New Enrollment Modal -->
+<div id="enrollModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div class="glass-card rounded-2xl w-full max-w-lg transform scale-95 opacity-0 transition-all duration-300" id="enrollModalContent">
+        <div class="p-6 border-b border-white/10 flex items-center justify-between">
+            <div>
+                <h3 class="text-xl font-bold text-white">New Enrollment</h3>
+                <p class="text-sm text-slate-400">Enroll a student in a course</p>
+            </div>
+            <button onclick="closeEnrollModal()" class="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                <i class="bi bi-x-lg text-slate-400"></i>
+            </button>
+        </div>
+        
+        <form id="enrollmentForm" method="POST" action="{{ url_for('admin.create_enrollment') }}" class="p-6 space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div>
+                <label class="block text-sm font-medium text-slate-300 mb-2">Student</label>
+                <select name="student_id" required class="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all">
+                    <option value="">Select Student</option>
+                    {% for student in students|default([]) %}
+                    <option value="{{ student.id }}">{{ student.user.full_name }} ({{ student.student_id|default(student.id) }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-slate-300 mb-2">Course</label>
+                <select name="course_id" required class="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all">
+                    <option value="">Select Course</option>
+                    {% for course in courses|default([]) %}
+                    <option value="{{ course.id }}">{{ course.code }} - {{ course.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-slate-300 mb-2">Status</label>
+                <select name="status" class="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all">
+                    <option value="active">Active</option>
+                    <option value="pending">Pending</option>
+                    <option value="completed">Completed</option>
+                    <option value="dropped">Dropped</option>
+                </select>
+            </div>
+            
+            <div class="pt-4 flex gap-3">
+                <button type="button" onclick="closeEnrollModal()" class="flex-1 px-4 py-3 rounded-xl border border-white/10 text-slate-300 hover:text-white hover:border-white/20 transition-all">Cancel</button>
+                <button type="submit" class="flex-1 px-4 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all">Enroll Student</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Modal Functions
+    function openEnrollModal() {
+        const modal = document.getElementById('enrollModal');
+        const content = document.getElementById('enrollModalContent');
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            content.classList.remove('scale-95', 'opacity-0');
+            content.classList.add('scale-100', 'opacity-100');
+        }, 10);
+    }
+    
+    function closeEnrollModal() {
+        const modal = document.getElementById('enrollModal');
+        const content = document.getElementById('enrollModalContent');
+        content.classList.remove('scale-100', 'opacity-100');
+        content.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            document.getElementById('enrollmentForm').reset();
+        }, 300);
+    }
+    
+    // Search & Filter
+    const searchInput = document.getElementById('enrollmentSearch');
+    const courseFilter = document.getElementById('courseFilter');
+    const statusFilter = document.getElementById('statusFilter');
+    
+    function filterTable() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const courseValue = courseFilter.value;
+        const statusValue = statusFilter.value;
+        
+        document.querySelectorAll('#tableBody tr[data-id]').forEach(row => {
+            const text = row.textContent.toLowerCase();
+            const matchesSearch = text.includes(searchTerm);
+            const matchesCourse = !courseValue || row.getAttribute('data-course') === courseValue;
+            const matchesStatus = !statusValue || row.getAttribute('data-status') === statusValue;
+            
+            row.style.display = (matchesSearch && matchesCourse && matchesStatus) ? '' : 'none';
+        });
+    }
+    
+    searchInput.addEventListener('input', filterTable);
+    courseFilter.addEventListener('change', filterTable);
+    statusFilter.addEventListener('change', filterTable);
+    
+    // Bulk Actions
+    function toggleSelectAll() {
+        const selectAll = document.getElementById('selectAll');
+        const checkboxes = document.querySelectorAll('.enrollment-checkbox');
+        checkboxes.forEach(cb => {
+            cb.checked = selectAll.checked;
+            const row = cb.closest('tr');
+            if (selectAll.checked) row.classList.add('bg-white/10');
+            else row.classList.remove('bg-white/10');
+        });
+        updateBulkButton();
+    }
+    
+    function updateBulkButton() {
+        const checked = document.querySelectorAll('.enrollment-checkbox:checked');
+        const btn = document.getElementById('bulkActionBtn');
+        
+        if (checked.length > 0) {
+            btn.classList.remove('hidden');
+            btn.querySelector('span').textContent = `Bulk Actions (${checked.length})`;
+        } else {
+            btn.classList.add('hidden');
+        }
+        
+        // Highlight selected rows
+        document.querySelectorAll('.enrollment-checkbox').forEach(cb => {
+            const row = cb.closest('tr');
+            if (cb.checked) row.classList.add('bg-white/10');
+            else row.classList.remove('bg-white/10');
+        });
+    }
+    
+    function bulkAction() {
+        const checked = document.querySelectorAll('.enrollment-checkbox:checked');
+        alert(`Bulk action on ${checked.length} enrollments - implement your bulk logic here`);
+    }
+    
+    function exportEnrollments() {
+        const courseId = (document.getElementById('courseFilter')?.value || '').trim();
+        const status = (document.getElementById('statusFilter')?.value || '').trim();
+        const params = new URLSearchParams();
+        if (courseId) params.set('course_id', courseId);
+        if (status) params.set('status', status);
+        window.location.href = `{{ url_for('admin.export_enrollments_csv') }}?${params.toString()}`;
+    }
+    
+    // Close modals on backdrop click
+    document.getElementById('enrollModal').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) closeEnrollModal();
+    });
+</script>
+{% endblock %}

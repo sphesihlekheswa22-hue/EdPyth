@@ -2,15 +2,32 @@ import os
 from typing import List, Optional, Set, Union
 from werkzeug.utils import secure_filename
 from flask import (
-    Blueprint, render_template, redirect, url_for, 
-    flash, request, send_from_directory, current_app, abort
+    Blueprint,
+    render_template,
+    redirect,
+    url_for,
+    flash,
+    request,
+    send_from_directory,
+    send_file,
+    current_app,
+    abort,
 )
 from flask_login import login_required, current_user
 from datetime import datetime
 from http import HTTPStatus
 
 from app import db
+from app.utils.app_time import app_timestamp
 from app.models import CourseMaterial, Course, Student, Module, Enrollment, Lecturer
+from app.models.lecturer import LecturerModule
+from app.utils.access_control import (
+    require_module_access, 
+    require_lecturer_assigned_to_module,
+    can_edit_module_content,
+    is_admin
+)
+from app.services.notification_service import NotificationService
 
 materials_bp = Blueprint('materials', __name__, url_prefix='/materials')
 
@@ -69,66 +86,145 @@ def get_file_icon(file_type: str) -> str:
     return icon_map.get(file_type, 'file')
 
 
-def check_material_access(course_id: int, require_edit: bool = False) -> tuple:
+def _candidate_upload_roots() -> List[str]:
     """
-    Verify user access to course materials.
-    Returns (course, student, has_edit_permission).
-    """
-    course: Course = Course.query.get_or_404(course_id)
+    Return upload roots to try for reading existing files.
     
-    student: Optional[Student] = None
-    can_edit: bool = False
+    This repo historically used both `app/static/uploads` and `app/app/static/uploads`.
+    Downloads should work regardless of which path the file ended up on disk.
+    """
+    roots: List[str] = []
+
+    cfg_root = current_app.config.get("UPLOAD_FOLDER")
+    if cfg_root:
+        roots.append(cfg_root)
+
+    app_dir = os.path.dirname(os.path.abspath(__file__))  # .../app/routes
+    app_pkg_dir = os.path.dirname(app_dir)  # .../app
+    roots.append(os.path.join(app_pkg_dir, "static", "uploads"))
+    roots.append(os.path.join(app_pkg_dir, "app", "static", "uploads"))
+
+    # de-dupe while preserving order
+    seen = set()
+    uniq: List[str] = []
+    for r in roots:
+        if r and r not in seen:
+            seen.add(r)
+            uniq.append(r)
+    return uniq
+
+
+def check_material_access(module_id: int, require_edit: bool = False) -> tuple:
+    """
+    Verify user access to module materials.
+    Returns (module, course, student, has_edit_permission).
+    """
+    ctx = require_module_access(module_id)
+    module = ctx.module
+    course = ctx.course
+    
+    can_edit = False
     
     if current_user.role == 'admin':
         can_edit = True
         
     elif current_user.role == 'lecturer':
-        lecturer: Lecturer = Lecturer.query.filter_by(
-            user_id=current_user.id
-        ).first_or_404()
-        
-        if course.lecturer_id != lecturer.id:
-            abort(HTTPStatus.FORBIDDEN)
-        
-        can_edit = True
+        # Must be assigned to this module
+        can_edit = can_edit_module_content(module_id)
         
     elif current_user.role == 'student':
         if require_edit:
             abort(HTTPStatus.FORBIDDEN)
-        
-        student = Student.query.filter_by(user_id=current_user.id).first_or_404()
-        
-        enrollment: Optional[Enrollment] = Enrollment.query.filter_by(
-            student_id=student.id,
-            course_id=course_id,
-            status='active'
-        ).first()
-        
-        if not enrollment:
-            abort(HTTPStatus.FORBIDDEN, 'Active enrollment required')
+        if not ctx.has_access:
+            abort(HTTPStatus.FORBIDDEN, 'Access to this module is not permitted')
     
-    return course, student, can_edit
+    return module, course, ctx.student, can_edit
 
 
-def get_upload_path(course_id: int, filename: str) -> str:
-    """Generate secure upload path."""
-    upload_folder: str = current_app.config.get('UPLOAD_FOLDER', 'uploads')
-    course_folder: str = os.path.join(upload_folder, 'materials', str(course_id))
+def get_upload_path(module_id: int, filename: str) -> str:
+    """Generate secure upload path based on module."""
+    upload_folder: str = current_app.config.get('UPLOAD_FOLDER')
+    module_folder: str = os.path.join(upload_folder, 'materials', str(module_id))
     
     # Ensure directory exists
-    os.makedirs(course_folder, exist_ok=True)
+    os.makedirs(module_folder, exist_ok=True)
     
-    return os.path.join(course_folder, secure_filename(filename))
+    return os.path.join(module_folder, secure_filename(filename))
+
+
+@materials_bp.route('/')
+@login_required
+def index():
+    """List all materials for enrolled courses - student view."""
+    if current_user.role != 'student':
+        from flask import redirect, url_for
+        return redirect(url_for('courses.index'))
+
+    student: Student = Student.query.filter_by(
+        user_id=current_user.id
+    ).first_or_404()
+
+    enrollments: List[Enrollment] = Enrollment.query.filter_by(
+        student_id=student.id, status='active'
+    ).all()
+
+    course_ids: List[int] = [e.course_id for e in enrollments]
+
+    modules: List[Module] = Module.query.filter(
+        Module.course_id.in_(course_ids)
+    ).all()
+
+    materials = []
+    for module in modules:
+        for material in module.materials:
+            if material.is_published:
+                materials.append({
+                    'material': material,
+                    'module': module,
+                    'course': module.course
+                })
+
+    return render_template('materials_all.html', materials=materials)
 
 
 @materials_bp.route('/course/<int:course_id>')
 @login_required
-def list_materials(course_id: int) -> str:
-    """List materials for a course."""
-    course, student, can_edit = check_material_access(course_id)
+def list_materials_by_course(course_id: int):
+    """Redirect to first module's materials or show appropriate message."""
+    from flask import flash
+    course = Course.query.get_or_404(course_id)
+    
+    # Prefer a module the lecturer is assigned to (avoid 403 redirects)
+    first_module = None
+    if current_user.role == "lecturer":
+        lecturer = Lecturer.query.filter_by(user_id=current_user.id).first()
+        if lecturer:
+            first_module = (
+                Module.query.join(LecturerModule, LecturerModule.module_id == Module.id)
+                .filter(LecturerModule.lecturer_id == lecturer.id, Module.course_id == course_id)
+                .order_by(Module.order)
+                .first()
+            )
+
+    # Fallback: first module in course
+    if first_module is None:
+        first_module = Module.query.filter_by(course_id=course_id).order_by(Module.order).first()
+    
+    if not first_module:
+        flash('No modules available for this course yet.', 'info')
+        return redirect(url_for('courses.detail', course_id=course_id))
+    
+    return redirect(url_for('materials.list_materials', module_id=first_module.id))
+
+
+@materials_bp.route('/module/<int:module_id>')
+@login_required
+def list_materials(module_id: int) -> str:
+    """List materials for a module."""
+    module, course, student, can_edit = check_material_access(module_id)
     
     # Base query - published materials for students, all for staff
-    query = CourseMaterial.query.filter_by(course_id=course_id)
+    query = CourseMaterial.query.filter_by(module_id=module_id)
     
     if not can_edit:
         query = query.filter_by(is_published=True)
@@ -146,26 +242,22 @@ def list_materials(course_id: int) -> str:
             categories[cat] = []
         categories[cat].append(material)
     
-    # Get modules for context
-    modules: List[Module] = Module.query.filter_by(course_id=course_id).all()
-    module_map: dict = {m.id: m for m in modules}
-    
     return render_template(
         'materials.html',
         course=course,
+        module=module,
         materials=materials,
         categories=categories,
-        module_map=module_map,
         can_edit=can_edit,
         allowed_extensions=list(ALLOWED_EXTENSIONS)
     )
 
 
-@materials_bp.route('/course/<int:course_id>/upload', methods=['GET', 'POST'])
+@materials_bp.route('/module/<int:module_id>/upload', methods=['GET', 'POST'])
 @login_required
-def upload_material(course_id: int) -> Union[str, redirect]:
-    """Upload material to course."""
-    course, _, can_edit = check_material_access(course_id, require_edit=True)
+def upload_material(module_id: int) -> Union[str, redirect]:
+    """Upload material to module."""
+    module, course, _, can_edit = check_material_access(module_id, require_edit=True)
     
     if not can_edit:
         abort(HTTPStatus.FORBIDDEN)
@@ -196,19 +288,19 @@ def upload_material(course_id: int) -> Union[str, redirect]:
         try:
             # Secure filename and save
             filename: str = secure_filename(file.filename)
-            file_path: str = get_upload_path(course_id, filename)
+            file_path: str = get_upload_path(module_id, filename)
             
-            # Check for duplicate
+            # Check for duplicate in same module
             existing: Optional[CourseMaterial] = CourseMaterial.query.filter_by(
-                course_id=course_id,
+                module_id=module_id,
                 file_name=filename
             ).first()
             
             if existing:
                 # Append timestamp to make unique
                 name, ext = os.path.splitext(filename)
-                filename = f"{name}_{int(datetime.utcnow().timestamp())}{ext}"
-                file_path = get_upload_path(course_id, filename)
+                filename = f"{name}_{int(app_timestamp())}{ext}"
+                file_path = get_upload_path(module_id, filename)
             
             file.save(file_path)
             
@@ -220,16 +312,16 @@ def upload_material(course_id: int) -> Union[str, redirect]:
                 flash(f'File too large. Maximum size: {MAX_FILE_SIZE // (1024*1024)}MB', 'danger')
                 return redirect(request.url)
             
-            # Determine publish status from checkbox (default to True if not present)
-            is_published = request.form.get('is_published') == 'on'
+            # Determine publish status from checkbox.
+            # UI checks this by default; if the field is missing, default to published.
+            is_published = (request.form.get('is_published', 'on') == 'on')
             
             # Create database record
             material = CourseMaterial(
-                course_id=course_id,
-                module_id=request.form.get('module_id') or None,
+                module_id=module_id,
                 title=request.form.get('title', '').strip() or filename,
                 description=request.form.get('description', '').strip() or None,
-                file_path=f'/static/uploads/materials/{course_id}/{filename}',
+                file_path=f'/static/uploads/materials/{module_id}/{filename}',
                 file_name=filename,
                 file_type=get_file_type(filename),
                 file_size=file_size,
@@ -240,9 +332,29 @@ def upload_material(course_id: int) -> Union[str, redirect]:
             
             db.session.add(material)
             db.session.commit()
+
+            # If published, notify enrolled students
+            try:
+                if material.is_published:
+                    if current_user.role == 'lecturer':
+                        lecturer = Lecturer.query.filter_by(user_id=current_user.id).first()
+                    else:
+                        lecturer = None
+                    enrollments = Enrollment.query.filter_by(course_id=course.id, status='active').all()
+                    students = [e.student for e in enrollments if e.student and e.student.user]
+                    if students:
+                        NotificationService.notify_material_published(
+                            lecturer=lecturer,
+                            course=course,
+                            module=module,
+                            material=material,
+                            students=students
+                        )
+            except Exception:
+                db.session.rollback()
             
             flash(f'Material "{material.title}" uploaded successfully!', 'success')
-            return redirect(url_for('materials.list_materials', course_id=course_id))
+            return redirect(url_for('materials.list_materials', module_id=module_id))
             
         except Exception as e:
             db.session.rollback()
@@ -255,18 +367,16 @@ def upload_material(course_id: int) -> Union[str, redirect]:
             return redirect(request.url)
     
     # GET request
-    modules: List[Module] = Module.query.filter_by(
-        course_id=course_id
-    ).order_by(Module.order).all()
-    
+    # Get existing categories from this module
     categories: List[str] = db.session.query(
         CourseMaterial.category
-    ).filter_by(course_id=course_id).distinct().all()
+    ).filter_by(module_id=module_id).distinct().all()
     
+    # Use lecturer-specific template (legacy root template was removed)
     return render_template(
-        'material_upload.html',
+        'lecturer/material_upload.html',
         course=course,
-        modules=modules,
+        module=module,
         existing_categories=[c[0] for c in categories if c[0]]
     )
 
@@ -279,23 +389,48 @@ def download_material(material_id: int):
     
     # Access check for students
     if current_user.role == 'student':
-        student: Student = Student.query.filter_by(
-            user_id=current_user.id
-        ).first_or_404()
-        
-        enrollment: Optional[Enrollment] = Enrollment.query.filter_by(
-            student_id=student.id,
-            course_id=material.course_id,
-            status='active'
-        ).first()
-        
-        if not enrollment or not material.is_published:
+        ctx = require_module_access(material.module_id)
+        if not ctx.has_access:
+            abort(HTTPStatus.FORBIDDEN)
+        if not material.is_published:
             abort(HTTPStatus.FORBIDDEN)
     
-    upload_folder: str = current_app.config.get('UPLOAD_FOLDER', 'uploads')
-    course_folder: str = os.path.join(
-        upload_folder, 'materials', str(material.course_id)
-    )
+    # Try multiple ways to locate the file:
+    # 1) Current canonical location: <UPLOAD_ROOT>/materials/<module_id>/<file_name>
+    # 2) Legacy stored material.file_path (may contain a different module folder)
+    abs_path = None
+
+    # 1) Canonical location
+    for root in _candidate_upload_roots():
+        candidate = os.path.join(root, "materials", str(material.module_id), material.file_name)
+        if os.path.exists(candidate):
+            abs_path = candidate
+            break
+
+    # 2) Stored DB path fallback (supports /static/uploads/... and other historic shapes)
+    if abs_path is None and material.file_path:
+        rel = material.file_path.strip().lstrip("/").replace("\\", "/")
+        # Normalize common prefixes so we can join against UPLOAD_ROOT
+        # - static/uploads/<...>  -> <...>
+        # - app/static/uploads/<...> -> <...>
+        for prefix in ("static/uploads/", "app/static/uploads/"):
+            if rel.startswith(prefix):
+                rel = rel[len(prefix):]
+                break
+
+        # If rel still contains "uploads/", strip it too.
+        if rel.startswith("uploads/"):
+            rel = rel[len("uploads/"):]
+
+        for root in _candidate_upload_roots():
+            candidate = os.path.join(root, *rel.split("/"))
+            if os.path.exists(candidate):
+                abs_path = candidate
+                break
+
+    if abs_path is None:
+        flash("This file is missing on the server (it may have been moved or deleted).", "warning")
+        return redirect(url_for("materials.list_materials", module_id=material.module_id))
     
     # Track download (optional analytics)
     try:
@@ -304,11 +439,10 @@ def download_material(material_id: int):
     except:
         db.session.rollback()
     
-    return send_from_directory(
-        course_folder,
-        material.file_name,
+    return send_file(
+        abs_path,
         as_attachment=True,
-        download_name=material.title or material.file_name
+        download_name=material.title or material.file_name,
     )
 
 
@@ -317,7 +451,7 @@ def download_material(material_id: int):
 def delete_material(material_id: int) -> redirect:
     """Delete material."""
     material: CourseMaterial = CourseMaterial.query.get_or_404(material_id)
-    course_id: int = material.course_id
+    module_id: int = material.module_id
     
     # Permission check
     can_delete: bool = False
@@ -325,10 +459,7 @@ def delete_material(material_id: int) -> redirect:
     if current_user.role == 'admin':
         can_delete = True
     elif current_user.role == 'lecturer':
-        lecturer: Lecturer = Lecturer.query.filter_by(
-            user_id=current_user.id
-        ).first_or_404()
-        can_delete = material.course.lecturer_id == lecturer.id
+        can_delete = can_edit_module_content(module_id)
     
     if not can_delete:
         abort(HTTPStatus.FORBIDDEN)
@@ -337,7 +468,7 @@ def delete_material(material_id: int) -> redirect:
         # Delete physical file
         upload_folder: str = current_app.config.get('UPLOAD_FOLDER', 'uploads')
         file_path: str = os.path.join(
-            upload_folder, 'materials', str(course_id), material.file_name
+            upload_folder, 'materials', str(module_id), material.file_name
         )
         
         if os.path.exists(file_path):
@@ -354,7 +485,7 @@ def delete_material(material_id: int) -> redirect:
         current_app.logger.error(f'Material deletion error: {str(e)}')
         flash('Error deleting material.', 'danger')
     
-    return redirect(url_for('materials.list_materials', course_id=course_id))
+    return redirect(url_for('materials.list_materials', module_id=module_id))
 
 
 @materials_bp.route('/<int:material_id>/toggle-publish', methods=['POST'])
@@ -369,17 +500,34 @@ def toggle_publish(material_id: int) -> redirect:
     if current_user.role == 'admin':
         can_edit = True
     elif current_user.role == 'lecturer':
-        lecturer: Lecturer = Lecturer.query.filter_by(
-            user_id=current_user.id
-        ).first_or_404()
-        can_edit = material.course.lecturer_id == lecturer.id
+        can_edit = can_edit_module_content(material.module_id)
     
     if not can_edit:
         abort(HTTPStatus.FORBIDDEN)
     
     try:
+        was_published = bool(material.is_published)
         material.is_published = not material.is_published
         db.session.commit()
+
+        # If just published, notify enrolled students
+        if (not was_published) and material.is_published:
+            try:
+                module = Module.query.get_or_404(material.module_id)
+                course = Course.query.get_or_404(module.course_id)
+                lecturer = Lecturer.query.filter_by(user_id=current_user.id).first() if current_user.role == 'lecturer' else None
+                enrollments = Enrollment.query.filter_by(course_id=course.id, status='active').all()
+                students = [e.student for e in enrollments if e.student and e.student.user]
+                if students:
+                    NotificationService.notify_material_published(
+                        lecturer=lecturer,
+                        course=course,
+                        module=module,
+                        material=material,
+                        students=students
+                    )
+            except Exception:
+                db.session.rollback()
         
         status: str = 'published' if material.is_published else 'unpublished'
         flash(f'Material {status}.', 'success')
@@ -389,4 +537,30 @@ def toggle_publish(material_id: int) -> redirect:
         current_app.logger.error(f'Publish toggle error: {str(e)}')
         flash('Error updating material.', 'danger')
     
-    return redirect(url_for('materials.list_materials', course_id=material.course_id))
+    return redirect(url_for('materials.list_materials', module_id=material.module_id))
+
+
+@materials_bp.route('/course/<int:course_id>/upload')
+@login_required
+def upload_material_course_legacy(course_id: int) -> redirect:
+    """Redirect old course-based upload URLs to first module's upload page."""
+    # Prefer a module assigned to the current lecturer (avoids 403 on upload)
+    module = None
+    if current_user.role == 'lecturer':
+        lecturer = Lecturer.query.filter_by(user_id=current_user.id).first()
+        if lecturer:
+            module = (
+                Module.query.join(LecturerModule, LecturerModule.module_id == Module.id)
+                .filter(LecturerModule.lecturer_id == lecturer.id, Module.course_id == course_id)
+                .order_by(Module.order)
+                .first()
+            )
+
+    # Fallback: first module in course
+    if module is None:
+        module = Module.query.filter_by(course_id=course_id).order_by(Module.order).first()
+    if module:
+        return redirect(url_for('materials.upload_material', module_id=module.id))
+    
+    flash('No modules found in this course. Create a module first.', 'warning')
+    return redirect(url_for('courses.detail', course_id=course_id))

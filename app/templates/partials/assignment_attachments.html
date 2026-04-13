@@ -1,0 +1,21 @@
+{# Expects: assignment (with .attachments). Optional: compact (bool) #}
+{% set atts = assignment.attachments if assignment.attachments else [] %}
+{% if atts|length > 0 %}
+<div class="rounded-xl border border-white/10 bg-white/[0.03] p-4 {% if not compact|default(false) %}mb-6{% endif %}">
+    <h3 class="text-sm font-semibold text-slate-200 mb-3 flex items-center gap-2">
+        <i class="bi bi-paperclip text-blue-400"></i>
+        Assignment file{% if atts|length != 1 %}s{% endif %} from instructor
+    </h3>
+    <ul class="space-y-2">
+        {% for att in atts %}
+        <li>
+            <a href="{{ url_for('assignments.download_assignment_attachment', attachment_id=att.id) }}"
+               class="inline-flex items-center gap-2 text-sm text-blue-300 hover:text-blue-200 transition-colors">
+                <i class="bi bi-download"></i>
+                <span class="truncate max-w-[min(100%,28rem)]">{{ att.file_name }}</span>
+            </a>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}

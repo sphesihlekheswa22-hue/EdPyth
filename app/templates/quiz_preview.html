@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}{{ quiz.title }} (view only) — EduMind AI{% endblock %}
+
+{% block page_title %}Quiz review{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6 animate-slide-up">
+  <div class="glass-card rounded-2xl p-6 border border-amber-500/20 bg-amber-500/5">
+    <div class="flex items-start gap-3">
+      <i class="bi bi-eye text-2xl text-amber-400"></i>
+      <div>
+        <h1 class="text-xl font-bold text-white">{{ quiz.title }}</h1>
+        <p class="text-sm text-slate-300 mt-1">{{ course.name }} — view only. Answers cannot be submitted{% if quiz.is_past_deadline() %} after the due date{% endif %}.</p>
+        {% if quiz.due_date %}
+        <p class="text-xs text-slate-500 mt-2">Due: {{ quiz.due_date.strftime('%b %d, %Y %H:%M') }} ({{ app_timezone_label }})</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if quiz.description %}
+  <div class="glass-card rounded-2xl p-5 text-slate-300 text-sm">{{ quiz.description }}</div>
+  {% endif %}
+
+  {% for question in questions %}
+  <div class="glass-card rounded-2xl p-5 border border-white/10">
+    <p class="text-xs text-slate-500 mb-2">Question {{ loop.index }}</p>
+    <p class="text-white font-medium mb-4">{{ question.question_text }}</p>
+
+    {% if question.normalized_question_type == 'multiple_choice' and question.get_options() %}
+    <ul class="space-y-2">
+      {% for opt in question.get_options() %}
+      <li class="flex gap-3 text-sm text-slate-300">
+        <span class="shrink-0 w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center font-semibold text-blue-300">{{ loop.index }}</span>
+        <span>{{ opt }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% elif question.normalized_question_type == 'multiple_choice' %}
+    <p class="text-sm text-amber-400/90">Multiple choice, but no options are stored for this question.</p>
+    {% elif question.normalized_question_type == 'true_false' %}
+    <p class="text-sm text-slate-400">True or False</p>
+    {% else %}
+    <p class="text-sm text-slate-500">Legacy question type — contact your instructor.</p>
+    {% endif %}
+  </div>
+  {% else %}
+  <p class="text-slate-500 text-center py-8">No questions in this quiz.</p>
+  {% endfor %}
+
+  <div class="flex flex-wrap gap-3">
+    <a href="{{ url_for('quizzes.list_quizzes', module_id=quiz.module_id) }}"
+       class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 text-white text-sm hover:bg-white/15 transition-colors">
+      <i class="bi bi-arrow-left"></i> Back to quizzes
+    </a>
+  </div>
+</div>
+{% endblock %}

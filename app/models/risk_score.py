@@ -1,5 +1,5 @@
-from datetime import datetime
 from app import db
+from app.utils.app_time import app_now
 
 
 class RiskScore(db.Model):
@@ -17,7 +17,7 @@ class RiskScore(db.Model):
     overall_score = db.Column(db.Float, nullable=True)
     risk_factors = db.Column(db.Text, nullable=True)  # JSON array of risk factors
     recommendations = db.Column(db.Text, nullable=True)
-    calculated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    calculated_at = db.Column(db.DateTime, default=app_now)
     
     # Relationships
     course = db.relationship('Course', backref='risk_scores')

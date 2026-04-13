@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - EduMind AI{% endblock %}
+
+{% block page_title %}Settings{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-6 animate-slide-up">
+  <div class="glass-card rounded-3xl p-6">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div>
+        <h3 class="text-xl font-display font-bold text-white">System Settings</h3>
+        <p class="text-slate-400 text-sm">Central place for admin configuration and permissions overview.</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <a href="{{ url_for('admin.settings', tab='system') }}"
+           class="px-4 py-2 rounded-xl border {{ 'border-blue-500/40 bg-blue-500/10 text-blue-200' if tab == 'system' else 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10' }} transition-colors">
+          <i class="bi bi-gear mr-2"></i>System Config
+        </a>
+        <a href="{{ url_for('admin.settings', tab='roles') }}"
+           class="px-4 py-2 rounded-xl border {{ 'border-blue-500/40 bg-blue-500/10 text-blue-200' if tab == 'roles' else 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10' }} transition-colors">
+          <i class="bi bi-shield-check mr-2"></i>Roles & Permissions
+        </a>
+      </div>
+    </div>
+  </div>
+
+  {% if tab == 'roles' %}
+  <div class="glass-card rounded-3xl p-6">
+    <div class="flex items-start gap-4">
+      <div class="w-12 h-12 rounded-2xl bg-purple-500/20 flex items-center justify-center flex-shrink-0">
+        <i class="bi bi-shield-lock-fill text-purple-300 text-xl"></i>
+      </div>
+      <div class="flex-1">
+        <h4 class="text-white font-semibold">Roles & Permissions</h4>
+        <p class="text-slate-400 text-sm mt-1">
+          This app uses role-based access control across blueprints. To change permissions, update the logic in
+          <code class="px-2 py-0.5 rounded bg-white/5 border border-white/10">app/utils/access_control.py</code>.
+        </p>
+        <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="rounded-2xl border border-white/10 bg-slate-900/30 p-4">
+            <p class="text-sm font-semibold text-white mb-1">Admin</p>
+            <ul class="text-sm text-slate-400 space-y-1 list-disc list-inside">
+              <li>Manage users</li>
+              <li>Manage courses & enrollments</li>
+              <li>View system analytics</li>
+            </ul>
+          </div>
+          <div class="rounded-2xl border border-white/10 bg-slate-900/30 p-4">
+            <p class="text-sm font-semibold text-white mb-1">Lecturer</p>
+            <ul class="text-sm text-slate-400 space-y-1 list-disc list-inside">
+              <li>Manage content for assigned modules</li>
+              <li>View module-scoped analytics</li>
+              <li>Send interventions/notifications</li>
+            </ul>
+          </div>
+          <div class="rounded-2xl border border-white/10 bg-slate-900/30 p-4">
+            <p class="text-sm font-semibold text-white mb-1">Student</p>
+            <ul class="text-sm text-slate-400 space-y-1 list-disc list-inside">
+              <li>View enrolled course/module content</li>
+              <li>Submit assignments & take quizzes</li>
+              <li>Receive notifications</li>
+            </ul>
+          </div>
+          <div class="rounded-2xl border border-white/10 bg-slate-900/30 p-4">
+            <p class="text-sm font-semibold text-white mb-1">Career Advisor</p>
+            <ul class="text-sm text-slate-400 space-y-1 list-disc list-inside">
+              <li>Review CV submissions</li>
+              <li>Provide feedback</li>
+              <li>Track student readiness</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="glass-card rounded-3xl p-6">
+    <div class="flex items-start gap-4">
+      <div class="w-12 h-12 rounded-2xl bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+        <i class="bi bi-sliders2 text-blue-300 text-xl"></i>
+      </div>
+      <div class="flex-1">
+        <h4 class="text-white font-semibold">System Config</h4>
+        <p class="text-slate-400 text-sm mt-1">
+          Your deployment settings come from environment variables (mail, API keys, secret keys). For production readiness,
+          keep secrets out of git and configure them on the host.
+        </p>
+        <div class="mt-4 rounded-2xl border border-white/10 bg-slate-900/30 p-4">
+          <p class="text-sm text-slate-300">
+            Next: if you want, I can surface a read-only status panel here (e.g., mail configured, OpenRouter key present,
+            debug mode) without exposing secrets.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+

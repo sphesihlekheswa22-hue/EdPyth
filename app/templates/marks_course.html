@@ -41,7 +41,7 @@
             <i class="bi bi-download"></i>
             Export CSV
         </button>
-        <a href="{{ url_for('marks.enter_marks', course_id=course.id) }}" 
+        <a href="{{ url_for('marks.enter_marks', module_id=module.id) }}" 
            class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl font-semibold text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all hover:-translate-y-0.5">
             <i class="bi bi-plus-circle"></i>
             Enter New Marks
@@ -62,7 +62,7 @@
                 <span class="text-xs font-medium text-slate-400">Class Average</span>
             </div>
             <h3 class="text-3xl font-display font-bold text-white">
-                {% if marks %}{{ "%.1f"|format(marks|map(attribute='score')|sum / marks|length) }}%{% else %}--{% endif %}
+                {% if marks %}{{ "%.1f"|format(marks|map(attribute='percentage')|sum / marks|length) }}%{% else %}--{% endif %}
             </h3>
             <p class="text-xs text-slate-500 mt-2">Based on {{ marks|length }} students</p>
         </div>
@@ -79,7 +79,7 @@
                 <span class="text-xs font-medium text-slate-400">Highest Score</span>
             </div>
             <h3 class="text-3xl font-display font-bold text-white">
-                {% if marks %}{{ marks|map(attribute='score')|max }}%{% else %}--{% endif %}
+                {% if marks %}{{ marks|map(attribute='percentage')|max }}%{% else %}--{% endif %}
             </h3>
             <p class="text-xs text-slate-500 mt-2">Top performer</p>
         </div>
@@ -97,7 +97,7 @@
             </div>
             <h3 class="text-3xl font-display font-bold text-white">
                 {% if marks %}
-                    {% set passing = marks|selectattr("score", "ge", 50)|list|length %}
+                    {% set passing = marks|selectattr("percentage", "ge", 50)|list|length %}
                     {{ "%.0f"|format((passing / marks|length) * 100) }}%
                 {% else %}--{% endif %}
             </h3>
@@ -134,10 +134,10 @@
         {% if marks %}
             {% set grades = {'A': 0, 'B': 0, 'C': 0, 'D': 0, 'F': 0} %}
             {% for mark in marks %}
-                {% if mark.score >= 90 %}{% set _ = grades.update({'A': grades.A + 1}) %}
-                {% elif mark.score >= 80 %}{% set _ = grades.update({'B': grades.B + 1}) %}
-                {% elif mark.score >= 70 %}{% set _ = grades.update({'C': grades.C + 1}) %}
-                {% elif mark.score >= 60 %}{% set _ = grades.update({'D': grades.D + 1}) %}
+                {% if mark.percentage >= 90 %}{% set _ = grades.update({'A': grades.A + 1}) %}
+                {% elif mark.percentage >= 80 %}{% set _ = grades.update({'B': grades.B + 1}) %}
+                {% elif mark.percentage >= 70 %}{% set _ = grades.update({'C': grades.C + 1}) %}
+                {% elif mark.percentage >= 60 %}{% set _ = grades.update({'D': grades.D + 1}) %}
                 {% else %}{% set _ = grades.update({'F': grades.F + 1}) %}
                 {% endif %}
             {% endfor %}
@@ -255,7 +255,7 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-white/5" id="marksTable">
-                    {% for mark in marks|sort(attribute='score', reverse=true) %}
+                    {% for mark in marks|sort(attribute='percentage', reverse=true) %}
                     <tr class="group hover:bg-white/5 transition-colors student-row" data-name="{{ mark.student.user.full_name|lower }}">
                         <td class="px-6 py-4">
                             <div class="flex items-center gap-3">
@@ -274,23 +274,23 @@
                         <td class="px-6 py-4 text-center">
                             <div class="flex items-center justify-center gap-2">
                                 <div class="w-16 h-2 bg-white/10 rounded-full overflow-hidden">
-                                    <div class="h-full rounded-full {% if mark.score >= 80 %}bg-emerald-500{% elif mark.score >= 60 %}bg-amber-500{% else %}bg-red-500{% endif %}" 
-                                         style="width: {{ mark.score }}%"></div>
+                                    <div class="h-full rounded-full {% if mark.percentage >= 80 %}bg-emerald-500{% elif mark.percentage >= 60 %}bg-amber-500{% else %}bg-red-500{% endif %}" 
+                                         style="width: {{ mark.percentage }}%"></div>
                                 </div>
-                                <span class="text-sm font-semibold text-white w-10">{{ mark.score }}%</span>
+                                <span class="text-sm font-semibold text-white w-10">{{ mark.percentage }}%</span>
                             </div>
                         </td>
                         <td class="px-6 py-4 text-center">
-                            {% set grade = 'A' if mark.score >= 90 else 'B' if mark.score >= 80 else 'C' if mark.score >= 70 else 'D' if mark.score >= 60 else 'F' %}
+                            {% set grade = 'A' if mark.percentage >= 90 else 'B' if mark.percentage >= 80 else 'C' if mark.percentage >= 70 else 'D' if mark.percentage >= 60 else 'F' %}
                             <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border grade-{{ grade|lower }}">
                                 {{ grade }}
                             </span>
                         </td>
                         <td class="px-6 py-4 text-right">
                             <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <a href="{{ url_for('marks.course_marks', course_id=course.id) }}" 
+                                <a href="{{ url_for('marks.enter_marks', module_id=module.id) }}" 
                                    class="p-2 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition-all"
-                                   title="Edit">
+                                   title="Enter/Edit marks">
                                     <i class="bi bi-pencil"></i>
                                 </a>
                                 <button onclick="deleteMark({{ mark.id }})" 
@@ -313,7 +313,7 @@
                 <p class="text-slate-400 text-sm max-w-md mx-auto mb-4">
                     Start grading your students by entering their assessment scores.
                 </p>
-                <a href="{{ url_for('marks.enter_marks', course_id=course.id) }}" 
+                <a href="{{ url_for('marks.enter_marks', module_id=module.id) }}" 
                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium">
                     <i class="bi bi-plus-lg"></i>
                     Enter First Marks
@@ -346,8 +346,8 @@
                 <p class="text-sm text-white">{{ mark.student.user.full_name }}</p>
                 <p class="text-xs text-slate-500">{{ mark.updated_at.strftime('%b %d, %H:%M') if mark.updated_at else 'Just now' }}</p>
             </div>
-            <span class="ml-2 px-2 py-0.5 rounded text-xs font-bold {% if mark.score >= 80 %}bg-emerald-500/20 text-emerald-400{% elif mark.score >= 60 %}bg-amber-500/20 text-amber-400{% else %}bg-red-500/20 text-red-400{% endif %}">
-                {{ mark.score }}%
+            <span class="ml-2 px-2 py-0.5 rounded text-xs font-bold {% if mark.percentage >= 80 %}bg-emerald-500/20 text-emerald-400{% elif mark.percentage >= 60 %}bg-amber-500/20 text-amber-400{% else %}bg-red-500/20 text-red-400{% endif %}">
+                {{ mark.percentage }}%
             </span>
         </div>
         {% endfor %}
@@ -384,11 +384,8 @@
 
     // Export grades
     function exportGrades() {
-        showToast('Exporting grades to CSV...', 'info');
-        // In production, trigger download
-        setTimeout(() => {
-            showToast('Download started', 'success');
-        }, 1000);
+        showToast('Preparing CSV export...', 'info');
+        window.location.href = "{{ url_for('marks.export_marks_csv', module_id=module.id) }}";
     }
 
     // Toast notification

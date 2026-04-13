@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Submit {{ assignment.title }} - EduMind AI{% endblock %}
+
+{% block page_title %}Submit Assignment{% endblock %}
+
+{% block content %}
+<!-- Back Link -->
+<div class="mb-6 animate-slide-up">
+    <a href="{{ url_for('assignments.view', assignment_id=assignment.id) }}" class="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors">
+        <i class="bi bi-arrow-left"></i> Back to Assignment
+    </a>
+</div>
+
+<div class="max-w-2xl mx-auto animate-slide-up">
+    <div class="glass-card rounded-2xl p-6">
+        <!-- Assignment Info -->
+        <div class="mb-8">
+            <h1 class="text-2xl font-bold text-white mb-2">{{ assignment.title }}</h1>
+            <p class="text-slate-400">
+                Course: {{ course.name if course else (module.course.name if module and module.course else 'Course') }} • {{ assignment.total_marks }} marks
+            </p>
+            {% if assignment.due_date %}
+            <div class="mt-2 text-sm {% if assignment.due_date < now %}text-red-400{% else %}text-slate-400{% endif %}">
+                {% if assignment.due_date < now %}
+                <i class="bi bi-exclamation-circle"></i> This assignment is past due
+                {% else %}
+                <i class="bi bi-clock"></i> Due: {{ assignment.due_date.strftime('%B %d, %Y at %H:%M') }}
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        {% include 'partials/assignment_attachments.html' %}
+
+        {% if submission %}
+        <!-- Already Submitted -->
+        <div class="bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-xl p-4 border border-blue-500/20 mb-6">
+            <div class="flex items-center gap-3 mb-3">
+                <div class="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                    <i class="bi bi-check-circle text-blue-400"></i>
+                </div>
+                <div>
+                    <div class="font-medium text-white">You have already submitted this assignment</div>
+                    <div class="text-sm text-slate-400">
+                        {{ submission.file_name }} • {{ submission.submitted_at.strftime('%B %d, %Y at %H:%M') if submission.submitted_at else 'N/A' }}
+                    </div>
+                </div>
+            </div>
+            <p class="text-sm text-slate-400">You can resubmit to replace your previous submission.</p>
+        </div>
+        {% endif %}
+
+        <!-- Upload Form -->
+        <form method="POST" enctype="multipart/form-data" class="space-y-6">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <div>
+                <label class="block text-sm font-medium text-slate-300 mb-2">
+                    Upload Your Assignment <span class="text-red-400">*</span>
+                </label>
+                <div class="border-2 border-dashed border-white/20 rounded-xl p-8 text-center hover:border-blue-500/50 transition-colors cursor-pointer" id="drop-zone">
+                    <input type="file" name="file" id="file" class="hidden" accept=".pdf,.doc,.docx,.txt,.zip,.png,.jpg,.jpeg" required>
+                    
+                    <div class="flex flex-col items-center">
+                        <div class="w-16 h-16 mb-4 rounded-full bg-blue-500/20 flex items-center justify-center">
+                            <i class="bi bi-cloud-upload text-2xl text-blue-400"></i>
+                        </div>
+                        <p class="text-white font-medium mb-1" id="file-label">
+                            Click to upload or drag and drop
+                        </p>
+                        <p class="text-sm text-slate-400">
+                            PDF, DOC, DOCX, TXT, ZIP, PNG, JPG (Max 10MB)
+                        </p>
+                    </div>
+                </div>
+                <div id="selected-file" class="mt-3 hidden">
+                    <div class="flex items-center justify-between bg-white/5 rounded-lg px-4 py-3">
+                        <div class="flex items-center gap-3">
+                            <i class="bi bi-file-earmark text-blue-400"></i>
+                            <span class="text-white" id="filename"></span>
+                        </div>
+                        <button type="button" class="text-slate-400 hover:text-white" id="remove-file">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- File Info -->
+            <div class="bg-slate-800/50 rounded-xl p-4">
+                <h3 class="text-sm font-medium text-slate-300 mb-2">File Requirements</h3>
+                <ul class="text-sm text-slate-400 space-y-1">
+                    <li>• Maximum file size: 10MB</li>
+                    <li>• Accepted formats: PDF, DOC, DOCX, TXT, ZIP, PNG, JPG</li>
+                    <li>• Make sure your file is clearly named</li>
+                    <li>• Include your name and student ID in the filename</li>
+                </ul>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="flex gap-4">
+                <a href="{{ url_for('assignments.view', assignment_id=assignment.id) }}" 
+                   class="flex-1 px-5 py-3 rounded-xl bg-white/10 text-white font-medium text-center hover:bg-white/20 transition-colors">
+                    Cancel
+                </a>
+                <button type="submit" 
+                        class="flex-1 px-5 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all hover:-translate-y-0.5">
+                    <i class="bi bi-upload mr-2"></i> Submit Assignment
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file');
+    const fileLabel = document.getElementById('file-label');
+    const selectedFile = document.getElementById('selected-file');
+    const filename = document.getElementById('filename');
+    const removeBtn = document.getElementById('remove-file');
+
+    // Click to upload
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    // File selected
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            fileLabel.textContent = file.name;
+            filename.textContent = file.name;
+            selectedFile.classList.remove('hidden');
+        }
+    });
+
+    // Remove file
+    removeBtn.addEventListener('click', () => {
+        fileInput.value = '';
+        fileLabel.textContent = 'Click to upload or drag and drop';
+        selectedFile.classList.add('hidden');
+    });
+
+    // Drag and drop
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('border-blue-500');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('border-blue-500');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('border-blue-500');
+        
+        if (e.dataTransfer.files.length > 0) {
+            fileInput.files = e.dataTransfer.files;
+            const file = e.dataTransfer.files[0];
+            fileLabel.textContent = file.name;
+            filename.textContent = file.name;
+            selectedFile.classList.remove('hidden');
+        }
+    });
+});
+</script>
+{% endblock %}

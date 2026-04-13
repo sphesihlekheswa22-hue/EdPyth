@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Help - EduMind AI{% endblock %}
+
+{% block page_title %}Help{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 py-8">
+    <div class="glass-card rounded-3xl p-8 border border-white/10">
+        <h1 class="text-2xl font-bold text-white font-display mb-4">Help</h1>
+        <ul class="text-slate-300 space-y-3 list-disc list-inside mb-6">
+            <li>Use <strong class="text-white">Courses</strong> to browse programs and open modules.</li>
+            <li><strong class="text-white">Materials</strong> and <strong class="text-white">Quizzes</strong> are organized by module.</li>
+            <li>Students can track <strong class="text-white">attendance</strong> and <strong class="text-white">marks</strong> from the dashboard.</li>
+            <li>Contact your administrator if you cannot sign in or need an enrollment change.</li>
+        </ul>
+        <a href="{{ url_for('main.index') }}"
+           class="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300">
+            <i class="bi bi-arrow-left"></i> Back to home
+        </a>
+    </div>
+</div>
+{% endblock %}

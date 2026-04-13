@@ -1,68 +1,113 @@
 from typing import List, Dict, Optional, Union
 from flask import (
     Blueprint, render_template, redirect, url_for, 
-    flash, request, abort, current_app, jsonify
+    flash, request, abort, current_app, jsonify, Response
 )
 from flask_login import login_required, current_user
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from http import HTTPStatus
 
 from app import db
-from app.models import Attendance, Course, Student, Enrollment, Lecturer, User
+from app.utils.app_time import app_now
+from app.models import Attendance, Course, Student, Enrollment, Lecturer, User, Module
+from app.models.lecturer import LecturerModule
+from app.utils.access_control import (
+    require_module_access,
+    require_lecturer_assigned_to_module,
+    can_edit_module_content,
+)
 
 attendance_bp = Blueprint('attendance', __name__, url_prefix='/attendance')
 
 
-def check_attendance_permission(course_id: int, require_record: bool = False) -> tuple:
+def _csv_response(filename: str, csv_text: str) -> Response:
+    # Excel-friendly UTF-8 with BOM.
+    bom = "\ufeff"
+    resp = Response(bom + csv_text, mimetype="text/csv; charset=utf-8")
+    resp.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
+def check_attendance_permission(module_id: int, require_record: bool = False) -> tuple:
     """Verify access to attendance records."""
-    course: Course = Course.query.get_or_404(course_id)
+    ctx = require_module_access(module_id)
+    module = ctx.module
+    course = ctx.course
     
     if current_user.role == 'admin':
-        return course, None, True
+        return module, course, None, True
     
     if current_user.role == 'lecturer':
-        lecturer: Lecturer = Lecturer.query.filter_by(
-            user_id=current_user.id
-        ).first_or_404()
-        
-        if course.lecturer_id != lecturer.id:
-            abort(HTTPStatus.FORBIDDEN, 'Not course instructor')
-        
-        return course, None, True
+        # Must be assigned to this module
+        if not can_edit_module_content(module_id):
+            abort(HTTPStatus.FORBIDDEN, 'Not assigned to this module')
+        return module, course, None, True
     
     if current_user.role == 'student':
         if require_record:
             abort(HTTPStatus.FORBIDDEN)
         
-        student: Student = Student.query.filter_by(
-            user_id=current_user.id
-        ).first_or_404()
-        
-        enrollment: Optional[Enrollment] = Enrollment.query.filter_by(
-            student_id=student.id,
-            course_id=course_id,
-            status='active'
-        ).first()
-        
-        if not enrollment:
+        if not ctx.has_access:
             abort(HTTPStatus.FORBIDDEN, 'Not enrolled')
         
-        return course, student, False
+        return module, course, ctx.student, False
     
     abort(HTTPStatus.FORBIDDEN)
 
 
+@attendance_bp.route('/')
+@login_required
+def index():
+    """Redirect to appropriate page based on user role."""
+    if current_user.role == 'student':
+        return redirect(url_for('courses.index'))
+    elif current_user.role == 'lecturer':
+        return redirect(url_for('main.dashboard'))
+    else:
+        return redirect(url_for('main.dashboard'))
+
+
 @attendance_bp.route('/course/<int:course_id>')
 @login_required
-def course_attendance(course_id: int) -> str:
-    """View attendance for course."""
-    course, student, can_record = check_attendance_permission(course_id)
+def course_attendance_redirect(course_id: int):
+    """Redirect to first module's attendance or show appropriate message."""
+    course = Course.query.get_or_404(course_id)
+    
+    # Prefer a module the lecturer is assigned to (avoid 403 redirects)
+    first_module = None
+    if current_user.role == "lecturer":
+        lecturer = Lecturer.query.filter_by(user_id=current_user.id).first()
+        if lecturer:
+            first_module = (
+                Module.query.join(LecturerModule, LecturerModule.module_id == Module.id)
+                .filter(LecturerModule.lecturer_id == lecturer.id, Module.course_id == course_id)
+                .order_by(Module.order)
+                .first()
+            )
+
+    # Fallback: first module in course
+    if first_module is None:
+        first_module = Module.query.filter_by(course_id=course_id).order_by(Module.order).first()
+    
+    if not first_module:
+        flash('No modules available for this course yet.', 'info')
+        return redirect(url_for('courses.detail', course_id=course_id))
+    
+    return redirect(url_for('attendance.module_attendance', module_id=first_module.id))
+
+
+@attendance_bp.route('/module/<int:module_id>')
+@login_required
+def module_attendance(module_id: int) -> str:
+    """View attendance for a module."""
+    module, course, student, can_record = check_attendance_permission(module_id)
     
     if student:
         # Student personal view
         records: List[Attendance] = Attendance.query.filter_by(
             student_id=student.id,
-            course_id=course_id
+            module_id=module_id
         ).order_by(Attendance.date.desc()).all()
         
         # Calculate stats
@@ -81,13 +126,14 @@ def course_attendance(course_id: int) -> str:
         return render_template(
             'attendance_student.html',
             course=course,
+            module=module,
             records=records,
             stats=stats
         )
     
     # Instructor view
     enrollments: List[Enrollment] = Enrollment.query.filter_by(
-        course_id=course_id,
+        course_id=course.id,
         status='active'
     ).join(Student).join(User).order_by(User.last_name).all()
     
@@ -96,7 +142,7 @@ def course_attendance(course_id: int) -> str:
     # Get recent attendance dates (last 30 days)
     recent_dates: List[date] = db.session.query(
         Attendance.date
-    ).filter_by(course_id=course_id).distinct().order_by(
+    ).filter_by(module_id=module_id).distinct().order_by(
         Attendance.date.desc()
     ).limit(30).all()
     
@@ -104,7 +150,7 @@ def course_attendance(course_id: int) -> str:
     
     # Get all records for matrix view
     all_records: List[Attendance] = Attendance.query.filter(
-        Attendance.course_id == course_id,
+        Attendance.module_id == module_id,
         Attendance.date.in_(recent_dates)
     ).all()
     
@@ -137,6 +183,7 @@ def course_attendance(course_id: int) -> str:
     return render_template(
         'attendance_course.html',
         course=course,
+        module=module,
         students=students,
         dates=recent_dates,
         matrix=matrix,
@@ -145,11 +192,83 @@ def course_attendance(course_id: int) -> str:
     )
 
 
-@attendance_bp.route('/course/<int:course_id>/record', methods=['GET', 'POST'])
+@attendance_bp.route('/module/<int:module_id>/export.csv')
 @login_required
-def record_attendance(course_id: int) -> Union[str, redirect]:
-    """Record attendance for a session."""
-    course, _, can_record = check_attendance_permission(course_id, require_record=True)
+def export_attendance_csv(module_id: int) -> Response:
+    """Export module attendance matrix as CSV (lecturer/admin only)."""
+    import csv
+    import io
+
+    module, course, _, can_record = check_attendance_permission(module_id, require_record=False)
+    if not can_record:
+        abort(HTTPStatus.FORBIDDEN)
+
+    # Export all attendance rows for the module
+    records: List[Attendance] = (
+        Attendance.query.filter_by(module_id=module_id)
+        .order_by(Attendance.date.asc(), Attendance.student_id.asc())
+        .all()
+    )
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "attendance_id",
+        "course_code",
+        "course_name",
+        "module_id",
+        "module_title",
+        "date",
+        "student_id",
+        "student_number",
+        "student_name",
+        "status",
+        "notes",
+        "recorded_by",
+        "created_at",
+        "updated_at",
+    ])
+
+    for r in records:
+        student_number = ""
+        student_name = ""
+        if r.student and getattr(r.student, "user", None):
+            student_number = getattr(r.student, "student_id", "") or str(r.student.id)
+            student_name = r.student.user.full_name
+
+        recorder_name = ""
+        if getattr(r, "recorder", None):
+            recorder_name = r.recorder.full_name
+
+        writer.writerow([
+            r.id,
+            course.code if course else "",
+            course.name if course else "",
+            module.id if module else module_id,
+            module.title if module else "",
+            r.date.isoformat() if r.date else "",
+            r.student_id,
+            student_number,
+            student_name,
+            r.status,
+            (r.notes or "").replace("\r", " ").replace("\n", " ").strip(),
+            recorder_name,
+            r.created_at.isoformat() if getattr(r, "created_at", None) else "",
+            r.updated_at.isoformat() if getattr(r, "updated_at", None) else "",
+        ])
+
+    date_str = app_now().strftime("%Y-%m-%d")
+    safe_code = (course.code if course else "course").replace(" ", "_")
+    safe_module = (module.title if module else f"module-{module_id}").replace(" ", "_")[:40]
+    filename = f"attendance-{safe_code}-{safe_module}-{date_str}.csv"
+    return _csv_response(filename, output.getvalue())
+
+
+@attendance_bp.route('/module/<int:module_id>/record', methods=['GET', 'POST'])
+@login_required
+def record_attendance(module_id: int) -> Union[str, redirect]:
+    """Record attendance for a module session."""
+    module, course, _, can_record = check_attendance_permission(module_id, require_record=True)
     
     if not can_record:
         abort(HTTPStatus.FORBIDDEN)
@@ -170,7 +289,7 @@ def record_attendance(course_id: int) -> Union[str, redirect]:
             
             # Get enrolled students
             enrollments: List[Enrollment] = Enrollment.query.filter_by(
-                course_id=course_id,
+                course_id=course.id,
                 status='active'
             ).all()
             
@@ -189,7 +308,7 @@ def record_attendance(course_id: int) -> Union[str, redirect]:
                 
                 # Check for existing record
                 existing: Optional[Attendance] = Attendance.query.filter_by(
-                    course_id=course_id,
+                    module_id=module_id,
                     student_id=student_id,
                     date=attendance_date
                 ).first()
@@ -198,11 +317,11 @@ def record_attendance(course_id: int) -> Union[str, redirect]:
                     existing.status = status
                     existing.notes = notes if notes else existing.notes
                     existing.recorded_by = current_user.id
-                    existing.updated_at = datetime.utcnow()
+                    existing.updated_at = app_now()
                     records_updated += 1
                 else:
                     attendance = Attendance(
-                        course_id=course_id,
+                        module_id=module_id,
                         student_id=student_id,
                         date=attendance_date,
                         status=status,
@@ -221,7 +340,7 @@ def record_attendance(course_id: int) -> Union[str, redirect]:
                 'success'
             )
             
-            return redirect(url_for('attendance.course_attendance', course_id=course_id))
+            return redirect(url_for('attendance.module_attendance', module_id=module_id))
             
         except ValueError as e:
             flash(f'Invalid date format: {str(e)}', 'danger')
@@ -232,7 +351,7 @@ def record_attendance(course_id: int) -> Union[str, redirect]:
     
     # GET request
     enrollments: List[Enrollment] = Enrollment.query.filter_by(
-        course_id=course_id,
+        course_id=course.id,
         status='active'
     ).join(Student).join(User).order_by(User.last_name).all()
     
@@ -240,7 +359,7 @@ def record_attendance(course_id: int) -> Union[str, redirect]:
     
     # Check for existing records today
     existing_records: List[Attendance] = Attendance.query.filter_by(
-        course_id=course_id,
+        module_id=module_id,
         date=today
     ).all()
     
@@ -253,7 +372,7 @@ def record_attendance(course_id: int) -> Union[str, redirect]:
     }
     
     recent_records: List[Attendance] = Attendance.query.filter_by(
-        course_id=course_id
+        module_id=module_id
     ).order_by(Attendance.date.desc()).limit(100).all()
     
     if recent_records:
@@ -274,6 +393,7 @@ def record_attendance(course_id: int) -> Union[str, redirect]:
     return render_template(
         'attendance_record.html',
         course=course,
+        module=module,
         students=enrollments,
         existing_records=existing_dict,
         date=today,
@@ -311,14 +431,15 @@ def my_attendance() -> str:
         (overall['present'] / overall['total'] * 100) if overall['total'] > 0 else 0
     )
     
-    # Group by course
-    courses_data: Dict[int, Dict] = {}
+    # Group by module (for context about which module in the course)
+    modules_data: Dict[int, Dict] = {}
     
     for record in records:
-        cid: int = record.course_id
-        if cid not in courses_data:
-            courses_data[cid] = {
-                'course': record.course,
+        mid: int = record.module_id
+        if mid not in modules_data:
+            modules_data[mid] = {
+                'module': record.module,
+                'course': record.module.course if record.module else None,
                 'records': [],
                 'stats': {
                     'present': 0, 'absent': 0, 'excused': 0, 
@@ -326,12 +447,12 @@ def my_attendance() -> str:
                 }
             }
         
-        courses_data[cid]['records'].append(record)
-        courses_data[cid]['stats']['total'] += 1
-        courses_data[cid]['stats'][record.status] += 1
+        modules_data[mid]['records'].append(record)
+        modules_data[mid]['stats']['total'] += 1
+        modules_data[mid]['stats'][record.status] += 1
     
-    # Calculate course rates
-    for cid, data in courses_data.items():
+    # Calculate module rates
+    for mid, data in modules_data.items():
         stats = data['stats']
         stats['rate'] = (
             (stats['present'] / stats['total'] * 100) 
@@ -339,7 +460,7 @@ def my_attendance() -> str:
         )
     
     # Recent activity (last 7 days)
-    recent_cutoff: date = date.today() - datetime.timedelta(days=7)
+    recent_cutoff: date = date.today() - timedelta(days=7)
     recent_records: List[Attendance] = [
         r for r in records if r.date >= recent_cutoff
     ]
@@ -347,7 +468,38 @@ def my_attendance() -> str:
     return render_template(
         'attendance_summary.html',
         records=records,
-        courses=courses_data,
+        modules=modules_data,
         overall=overall,
-        recent_records=recent_records
+        recent_records=recent_records,
+        attendance_rate=round(overall['rate'], 1),
+        total_present=overall['present'],
+        total_absent=overall['absent'],
+        total_late=overall['late'],
+        total_sessions=overall['total'],
     )
+
+
+@attendance_bp.route('/course/<int:course_id>/record', methods=['GET', 'POST'])
+@login_required
+def record_attendance_course_legacy(course_id: int) -> redirect:
+    """Redirect old course-based attendance record URLs to first module."""
+    # Prefer a module assigned to the current lecturer (avoids 403 on record)
+    module = None
+    if current_user.role == 'lecturer':
+        lecturer = Lecturer.query.filter_by(user_id=current_user.id).first()
+        if lecturer:
+            module = (
+                Module.query.join(LecturerModule, LecturerModule.module_id == Module.id)
+                .filter(LecturerModule.lecturer_id == lecturer.id, Module.course_id == course_id)
+                .order_by(Module.order)
+                .first()
+            )
+
+    # Fallback: first module in course
+    if module is None:
+        module = Module.query.filter_by(course_id=course_id).order_by(Module.order).first()
+    if module:
+        return redirect(url_for('attendance.record_attendance', module_id=module.id))
+    
+    flash('No modules found in this course.', 'warning')
+    return redirect(url_for('courses.detail', course_id=course_id))

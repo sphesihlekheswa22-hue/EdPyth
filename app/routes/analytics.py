@@ -1,12 +1,13 @@
-from flask import Blueprint, render_template, jsonify
+from flask import Blueprint, render_template, jsonify, abort
 from flask_login import login_required, current_user
 from datetime import datetime, timedelta
 from sqlalchemy import func
-import random
 from app import db
+from app.utils.app_time import app_now, app_today
 from app.models import (
-    User, Student, Lecturer, Course, Enrollment, QuizResult, 
-    Attendance, Mark, CourseMaterial, RiskScore
+    User, Student, Lecturer, Course, Enrollment, QuizResult,
+    Attendance, Mark, CourseMaterial, RiskScore, Quiz, Module,
+    ChatSession, ChatMessage
 )
 
 analytics_bp = Blueprint('analytics', __name__, url_prefix='/analytics')
@@ -42,41 +43,123 @@ def admin_analytics():
     # Recent activity
     new_students_30d = User.query.filter(
         User.role == 'student',
-        User.created_at >= datetime.utcnow() - timedelta(days=30)
+        User.created_at >= app_now() - timedelta(days=30)
     ).count()
     
-    # Enrollment trends
-    enrollments_by_month = db.session.query(
-        func.extract('month', Enrollment.enrolled_at).label('month'),
+    # Enrollment trends (last 30 days, daily)
+    start_day = app_today() - timedelta(days=29)
+    enroll_rows = db.session.query(
+        func.date(Enrollment.enrolled_at).label('day'),
         func.count(Enrollment.id).label('count')
     ).filter(
-        Enrollment.enrolled_at >= datetime.utcnow() - timedelta(days=365)
-    ).group_by('month').all()
+        Enrollment.enrolled_at >= datetime.combine(start_day, datetime.min.time())
+    ).group_by('day').order_by('day').all()
+    enroll_by_day = {r.day: int(r.count) for r in enroll_rows}
+    enrollment_labels = []
+    enrollment_counts = []
+    for i in range(30):
+        d = start_day + timedelta(days=i)
+        enrollment_labels.append(d.strftime('%b %d'))
+        enrollment_counts.append(enroll_by_day.get(d, 0))
     
     # Course popularity
     popular_courses = db.session.query(
+        Course.id,
+        Course.code,
         Course.name,
         func.count(Enrollment.id).label('enrollments')
     ).join(Enrollment).group_by(Course.id).order_by(func.count(Enrollment.id).desc()).limit(10).all()
+    top_courses = [
+        {
+            'id': row.id,
+            'code': row.code,
+            'name': row.name,
+            'enrollments': int(row.enrollments),
+            'students': int(row.enrollments),  # one enrollment per student per course
+        }
+        for row in popular_courses
+    ]
     
-    # Quiz performance
-    avg_quiz_score = db.session.query(func.avg(QuizResult.percentage)).scalar() or 0
+    # Quiz performance + overall performance (marks)
+    avg_quiz_score = float(db.session.query(func.avg(QuizResult.percentage)).scalar() or 0)
+    avg_performance = float(db.session.query(func.avg(Mark.percentage)).scalar() or 0)
+
+    # AI usage
+    ai_sessions = ChatSession.query.count()
+    ai_messages = ChatMessage.query.count()
+
+    # Active students (students with active enrollment)
+    active_students = db.session.query(func.count(func.distinct(Enrollment.student_id))).filter(
+        Enrollment.status == 'active'
+    ).scalar() or 0
+    total_enrollments = Enrollment.query.count()
+
+    # Grade distribution from marks (A/B/C/BelowC)
+    total_marks = Mark.query.count()
+    if total_marks > 0:
+        a = Mark.query.filter(Mark.percentage >= 90).count()
+        b = Mark.query.filter(Mark.percentage >= 80, Mark.percentage < 90).count()
+        c = Mark.query.filter(Mark.percentage >= 70, Mark.percentage < 80).count()
+        below_c = total_marks - (a + b + c)
+        grade_a = round(a / total_marks * 100, 1)
+        grade_b = round(b / total_marks * 100, 1)
+        grade_c = round(c / total_marks * 100, 1)
+        grade_d = round(below_c / total_marks * 100, 1)
+    else:
+        grade_a = grade_b = grade_c = grade_d = 0.0
+
+    # Recent activity (real)
+    recent_enrollments = Enrollment.query.order_by(Enrollment.enrolled_at.desc()).limit(5).all()
+    recent_quiz_results = QuizResult.query.order_by(QuizResult.completed_at.desc()).limit(5).all()
+    recent_activity = []
+    for e in recent_enrollments:
+        recent_activity.append({
+            'type': 'enrollment',
+            'title': 'New enrollment',
+            'detail': f'{e.student.full_name if e.student else "Student"} → {e.course.name if e.course else "Course"}',
+            'timestamp': e.enrolled_at,
+        })
+    for r in recent_quiz_results:
+        recent_activity.append({
+            'type': 'quiz',
+            'title': 'Quiz submitted',
+            'detail': f'{r.quiz.title if r.quiz else "Quiz"} • {r.percentage:.1f}%',
+            'timestamp': r.completed_at,
+        })
+    recent_activity = sorted(
+        [x for x in recent_activity if x.get('timestamp')],
+        key=lambda x: x['timestamp'],
+        reverse=True
+    )[:5]
     
     # At-risk students
     at_risk = RiskScore.query.filter(
         RiskScore.risk_level.in_(['high', 'critical'])
     ).count()
     
-    return render_template('analytics_admin.html',
-                          total_students=total_students,
-                          total_lecturers=total_lecturers,
-                          total_courses=total_courses,
-                          total_users=total_users,
-                          new_students_30d=new_students_30d,
-                          enrollments_by_month=enrollments_by_month,
-                          popular_courses=popular_courses,
-                          avg_quiz_score=round(avg_quiz_score, 1),
-                          at_risk=at_risk)
+    return render_template(
+        'admin/analytics_admin.html',
+        total_students=total_students,
+        total_lecturers=total_lecturers,
+        total_courses=total_courses,
+        total_users=total_users,
+        active_students=int(active_students),
+        total_enrollments=total_enrollments,
+        avg_performance=round(avg_performance, 1),
+        ai_sessions=ai_sessions,
+        ai_messages=ai_messages,
+        new_students_30d=new_students_30d,
+        enrollment_labels=enrollment_labels,
+        enrollment_counts=enrollment_counts,
+        grade_a=grade_a,
+        grade_b=grade_b,
+        grade_c=grade_c,
+        grade_d=grade_d,
+        top_courses=top_courses,
+        recent_activity=recent_activity,
+        avg_quiz_score=round(avg_quiz_score, 1),
+        at_risk=at_risk
+    )
 
 
 @analytics_bp.route('/lecturer')
@@ -86,45 +169,201 @@ def lecturer_analytics():
     if current_user.role != 'lecturer':
         abort(403)
     
-    lecturer = Lecturer.query.filter_by(user_id=current_user.id).first()
+    lecturer = Lecturer.query.filter_by(user_id=current_user.id).first_or_404()
     
-    # Get lecturer's courses
-    courses = Course.query.filter_by(lecturer_id=lecturer.id).all()
+    # Lecturer scope: only modules actually assigned to the lecturer
+    assigned_modules = lecturer.get_assigned_modules()
+    module_ids = [m.id for m in assigned_modules]
+    courses = lecturer.get_teaching_courses()
     course_ids = [c.id for c in courses]
     
     # Course statistics
     total_students = sum(c.get_student_count() for c in courses)
     total_materials = CourseMaterial.query.filter(
-        CourseMaterial.course_id.in_(course_ids)
-    ).count() if course_ids else 0
+        CourseMaterial.module_id.in_(module_ids)
+    ).count() if module_ids else 0
+
+    # Students per module (enrollment is course-level; we show course enrollment size per module)
+    students_per_module = []
+    for m in assigned_modules:
+        c = m.course
+        if not c:
+            continue
+        students_per_module.append({
+            "module_id": m.id,
+            "module_title": m.title,
+            "module_order": m.order,
+            "course_id": c.id,
+            "course_code": c.code,
+            "course_name": c.name,
+            "students": c.get_student_count(),
+        })
+    students_per_module.sort(key=lambda x: (x["course_code"] or "", x["module_order"] or 0, x["module_id"]))
+
+    # Engagement: % of enrolled students with any activity in last 14 days (quiz/submission/attendance)
+    engagement_rate = 0.0
+    active_today = 0
+    if module_ids and course_ids:
+        cutoff = app_now() - timedelta(days=14)
+        active_student_ids = set()
+
+        q_rows = QuizResult.query.join(Quiz).filter(
+            Quiz.module_id.in_(module_ids),
+            QuizResult.completed_at >= cutoff
+        ).with_entities(QuizResult.student_id).all()
+        active_student_ids.update([r[0] for r in q_rows])
+
+        # assignment submissions (if model exists in this module)
+        try:
+            from app.models.assignment import AssignmentSubmission, Assignment
+            assignment_ids = [a.id for a in Assignment.query.filter(Assignment.module_id.in_(module_ids)).all()]
+            if assignment_ids:
+                s_rows = AssignmentSubmission.query.filter(
+                    AssignmentSubmission.assignment_id.in_(assignment_ids),
+                    AssignmentSubmission.submitted_at >= cutoff
+                ).with_entities(AssignmentSubmission.student_id).all()
+                active_student_ids.update([r[0] for r in s_rows])
+        except Exception:
+            assignment_ids = []
+
+        a_rows = Attendance.query.filter(
+            Attendance.module_id.in_(module_ids)
+        ).with_entities(Attendance.student_id).distinct().all()
+        active_student_ids.update([r[0] for r in a_rows])
+
+        enrolled_student_ids = Enrollment.query.filter(
+            Enrollment.course_id.in_(course_ids),
+            Enrollment.status == 'active'
+        ).with_entities(Enrollment.student_id).distinct().all()
+        enrolled_student_ids = {r[0] for r in enrolled_student_ids}
+        engagement_rate = (len(active_student_ids & enrolled_student_ids) / len(enrolled_student_ids) * 100) if enrolled_student_ids else 0.0
+
+        # Active today: students with any quiz submission today in assigned modules
+        today = app_today()
+        active_today = db.session.query(func.count(func.distinct(QuizResult.student_id))).join(
+            Quiz, QuizResult.quiz_id == Quiz.id
+        ).filter(
+            Quiz.module_id.in_(module_ids),
+            func.date(QuizResult.completed_at) == today
+        ).scalar() or 0
+
+    # Student scores (marks + quizzes) across assigned modules
+    student_scores = []
+    if module_ids and course_ids:
+        student_ids = Enrollment.query.filter(
+            Enrollment.course_id.in_(course_ids),
+            Enrollment.status == 'active'
+        ).with_entities(Enrollment.student_id).distinct().all()
+        student_ids = [r[0] for r in student_ids]
+
+        for sid in student_ids:
+            student = Student.query.get(sid)
+            if not student or not student.user:
+                continue
+
+            m_avg = db.session.query(func.avg(Mark.percentage)).filter(
+                Mark.student_id == sid,
+                Mark.module_id.in_(module_ids)
+            ).scalar()
+            q_avg = db.session.query(func.avg(QuizResult.percentage)).join(
+                Quiz, QuizResult.quiz_id == Quiz.id
+            ).filter(
+                QuizResult.student_id == sid,
+                Quiz.module_id.in_(module_ids)
+            ).scalar()
+
+            m_avg = float(m_avg or 0)
+            q_avg = float(q_avg or 0)
+            # Composite: mean of available components
+            comps = [v for v in [m_avg, q_avg] if v > 0]
+            overall = sum(comps) / len(comps) if comps else 0.0
+
+            student_scores.append({
+                "student_id": sid,
+                "name": student.user.full_name,
+                "avg_marks": round(m_avg, 1),
+                "avg_quizzes": round(q_avg, 1),
+                "overall": round(overall, 1),
+            })
+
+        student_scores.sort(key=lambda x: x["overall"], reverse=True)
     
     # Quiz performance per course
     course_performance = []
     for course in courses:
-        avg_score = db.session.query(func.avg(QuizResult.percentage)).join(
-            QuizResult.quiz
-        ).filter(QuizResult.quiz.has(course_id=course.id)).scalar() or 0
+        # Get module IDs for this course
+        course_module_ids = [m.id for m in course.modules]
+        if course_module_ids:
+            avg_score = db.session.query(func.avg(QuizResult.percentage)).join(
+                Quiz
+            ).filter(Quiz.module_id.in_(course_module_ids)).scalar() or 0
+        else:
+            avg_score = 0
         
+        # Pass rate from quiz results in this course
+        if course_module_ids:
+            total_results = QuizResult.query.join(Quiz).filter(Quiz.module_id.in_(course_module_ids)).count()
+            passed_results = QuizResult.query.join(Quiz).filter(
+                Quiz.module_id.in_(course_module_ids),
+                QuizResult.passed == True  # noqa: E712
+            ).count()
+            pass_rate = (passed_results / total_results * 100) if total_results > 0 else 0
+        else:
+            pass_rate = 0
+
+        # Attendance rate for course
+        if course_module_ids:
+            total_att = Attendance.query.filter(Attendance.module_id.in_(course_module_ids)).count()
+            present_att = Attendance.query.filter(
+                Attendance.module_id.in_(course_module_ids),
+                Attendance.status == 'present'
+            ).count()
+            attendance_rate = (present_att / total_att * 100) if total_att > 0 else 0
+        else:
+            attendance_rate = 0
+
+        # Submission rate (assignment submissions / enrollments * assignments)
+        try:
+            from app.models.assignment import Assignment, AssignmentSubmission
+            if course_module_ids:
+                assignment_ids = [a.id for a in Assignment.query.filter(Assignment.module_id.in_(course_module_ids)).all()]
+                active_enrollments = Enrollment.query.filter_by(course_id=course.id, status='active').count()
+                if assignment_ids and active_enrollments > 0:
+                    submissions = AssignmentSubmission.query.filter(AssignmentSubmission.assignment_id.in_(assignment_ids)).count()
+                    possible = active_enrollments * len(assignment_ids)
+                    submission_rate = (submissions / possible * 100) if possible > 0 else 0
+                else:
+                    submission_rate = 0
+            else:
+                submission_rate = 0
+        except Exception:
+            submission_rate = 0
+
         course_performance.append({
             'code': course.code,
             'name': course.name,
             'avg_score': round(avg_score, 1),
             'students': course.get_student_count(),
             'student_count': course.get_student_count(),
-            'pass_rate': round(80 + random.random() * 15, 1),  # Placeholder
-            'attendance': round(75 + random.random() * 20, 1),  # Placeholder
-            'submission_rate': round(70 + random.random() * 25, 1)  # Placeholder
+            'pass_rate': round(pass_rate, 1),
+            'attendance': round(attendance_rate, 1),
+            'submission_rate': round(submission_rate, 1)
         })
     
     # Attendance rates
     attendance_rates = []
     for course in courses:
-        total = Attendance.query.filter_by(course_id=course.id).count()
-        if total > 0:
-            present = Attendance.query.filter_by(
-                course_id=course.id, status='present'
-            ).count()
-            rate = (present / total) * 100
+        course_module_ids = [m.id for m in course.modules]
+        if course_module_ids:
+            total = Attendance.query.filter(Attendance.module_id.in_(course_module_ids)).count()
+            if total > 0:
+                present = Attendance.query.filter(
+                    Attendance.module_id.in_(course_module_ids),
+                    Attendance.status == 'present'
+                ).count()
+                rate = (present / total) * 100
+            else:
+                rate = 0
         else:
             rate = 0
         attendance_rates.append({
@@ -147,22 +386,23 @@ def lecturer_analytics():
                 # Calculate attendance for this student in lecturer's courses
                 attendance_records = Attendance.query.filter(
                     Attendance.student_id == student.id,
-                    Attendance.course_id.in_(course_ids)
+                    Attendance.module_id.in_(module_ids)
                 ).all()
                 total_att = len(attendance_records)
                 present_att = sum(1 for a in attendance_records if a.status == 'present')
                 attendance_pct = round((present_att / total_att) * 100, 1) if total_att > 0 else 0
                 
                 # Get average mark for student in lecturer's courses
-                marks = Mark.query.join(Course).filter(
+                marks = Mark.query.filter(
                     Mark.student_id == student.id,
-                    Course.id.in_(course_ids)
+                    Mark.module_id.in_(module_ids)
                 ).all()
                 avg_score = round(sum(m.percentage for m in marks) / len(marks), 1) if marks else 0
                 
                 at_risk_students.append({
                     'id': student.id,
                     'name': student.user.full_name,
+                    'course_id': rs.course_id,
                     'risk_score': rs.risk_score,
                     'attendance': attendance_pct,
                     'avg_score': avg_score
@@ -174,7 +414,11 @@ def lecturer_analytics():
                           total_materials=total_materials,
                           course_performance=course_performance,
                           attendance_rates=attendance_rates,
-                          at_risk_students=at_risk_students)
+                          at_risk_students=at_risk_students,
+                          students_per_module=students_per_module,
+                          engagement_rate=round(engagement_rate, 1),
+                          active_today=int(active_today),
+                          student_scores=student_scores)
 
 
 @analytics_bp.route('/student')
@@ -208,12 +452,19 @@ def student_analytics():
     for e in enrollments:
         course = e.course
         
+        # Get module IDs for this course
+        course_module_ids = [m.id for m in course.modules]
+        
         # Calculate progress
-        course_marks = Mark.query.filter_by(student_id=student.id, course_id=course.id).all()
-        course_quizzes = QuizResult.query.join(QuizResult.quiz).filter(
+        course_marks = Mark.query.filter(
+            Mark.student_id == student.id,
+            Mark.module_id.in_(course_module_ids)
+        ).all() if course_module_ids else []
+        
+        course_quizzes = QuizResult.query.join(Quiz).filter(
             QuizResult.student_id == student.id,
-            QuizResult.quiz.has(course_id=course.id)
-        ).all()
+            Quiz.module_id.in_(course_module_ids)
+        ).all() if course_module_ids else []
         
         course_avg = 0
         if course_marks:
@@ -253,7 +504,7 @@ def enrollment_trend_api():
         func.extract('month', Enrollment.enrolled_at).label('month'),
         func.count(Enrollment.id).label('count')
     ).filter(
-        Enrollment.enrolled_at >= datetime.utcnow() - timedelta(days=365)
+        Enrollment.enrolled_at >= app_now() - timedelta(days=365)
     ).group_by('year', 'month').all()
     
     result = []
@@ -274,12 +525,18 @@ def quiz_performance_api(course_id):
     if current_user.role not in ['lecturer', 'admin']:
         return jsonify({'error': 'Access denied'}), 403
     
+    # Get module IDs for this course
+    module_ids = [m.id for m in Module.query.filter_by(course_id=course_id).all()]
+    
+    if not module_ids:
+        return jsonify([])
+    
     results = db.session.query(
         QuizResult.student_id,
         func.avg(QuizResult.percentage).label('avg_score'),
         func.count(QuizResult.id).label('quiz_count')
-    ).join(QuizResult.quiz).filter(
-        QuizResult.quiz.has(course_id=course_id)
+    ).join(Quiz).filter(
+        Quiz.module_id.in_(module_ids)
     ).group_by(QuizResult.student_id).all()
     
     result = []

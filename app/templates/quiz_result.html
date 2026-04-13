@@ -51,12 +51,12 @@
     
     <!-- Actions -->
     <div class="flex justify-center gap-4 mb-8">
-        <a href="{{ url_for('quizzes.list_quizzes', course_id=course.id) }}" 
+        <a href="{{ url_for('quizzes.list_quizzes_by_course', course_id=course.id) }}"
            class="inline-flex items-center gap-2 px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-medium transition-colors focus-ring">
             <i data-lucide="arrow-left" class="w-4 h-4"></i>
             Back to Quizzes
         </a>
-        <a href="{{ url_for('courses.detail', course_id=course.id) }}" 
+        <a href="{{ url_for('courses.detail', course_id=course.id) }}"
            class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-medium transition-colors focus-ring">
             <i data-lucide="book-open" class="w-4 h-4"></i>
             Back to Course
@@ -81,7 +81,7 @@
                 </div>
                 
                 <div class="ml-9 space-y-2">
-                    {% if question.question_type in ['multiple_choice', 'true_false'] %}
+                    {% if question.normalized_question_type in ['multiple_choice', 'true_false'] %}
                         {% set user_answer = answers.get(str(question.id), '') %}
                         {% set correct_answer = question.correct_answer %}
                         

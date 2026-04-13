@@ -1,418 +1,110 @@
 {% extends "base.html" %}
 
-{% block title %}My Progress - EduMind AI{% endblock %}
+{% block title %}My Analytics - {{ super() }}{% endblock %}
 
-{% block page_title %}My Learning Journey{% endblock %}
+{% block page_title %}My Progress & Analytics{% endblock %}
 
 {% block content %}
-<!-- Hero Stats Row -->
-<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-    <!-- Average Mark -->
-    <div class="glass-card rounded-2xl p-5 relative overflow-hidden group hover:scale-[1.02] transition-all">
-        <div class="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl -mr-16 -mt-16 group-hover:bg-blue-500/20 transition-colors"></div>
-        <div class="relative z-10">
-            <div class="flex items-center justify-between mb-3">
-                <div class="p-2 bg-blue-500/20 rounded-lg">
-                    <i class="bi bi-mortarboard-fill text-blue-400 text-xl"></i>
+<div class="space-y-8">
+    <!-- Performance Overview -->
+    <div class="bento-grid">
+        <div class="bento-item glass-card-premium rounded-2xl p-6">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                    <i class="bi bi-graph-up text-2xl text-white"></i>
                 </div>
-                {% if avg_mark >= 80 %}
-                <span class="text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-full">Excellent</span>
-                {% elif avg_mark >= 60 %}
-                <span class="text-xs font-medium text-blue-400 bg-blue-500/10 px-2 py-1 rounded-full">Good</span>
-                {% else %}
-                <span class="text-xs font-medium text-amber-400 bg-amber-500/10 px-2 py-1 rounded-full">Improving</span>
-                {% endif %}
-            </div>
-            
-            <div class="flex items-baseline gap-1 mb-1">
-                <h3 class="text-3xl font-bold text-white">{{ avg_mark|default(0) }}%</h3>
-                <span class="text-xs text-slate-500">avg</span>
-            </div>
-            <p class="text-sm text-slate-400">Overall Grade</p>
-            
-            <div class="mt-3 h-2 bg-slate-800 rounded-full overflow-hidden">
-                <div class="h-full rounded-full transition-all duration-1000 bg-gradient-to-r from-blue-500 to-blue-400" style="width: {{ avg_mark|default(0) }}%"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Quiz Performance -->
-    <div class="glass-card rounded-2xl p-5 relative overflow-hidden group hover:scale-[1.02] transition-all">
-        <div class="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl -mr-16 -mt-16 group-hover:bg-emerald-500/20 transition-colors"></div>
-        <div class="relative z-10">
-            <div class="flex items-center justify-between mb-3">
-                <div class="p-2 bg-emerald-500/20 rounded-lg">
-                    <i class="bi bi-clipboard-check-fill text-emerald-400 text-xl"></i>
-                </div>
-                <span class="text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-full flex items-center gap-1">
-                    <i class="bi bi-arrow-up-short"></i> 5%
-                </span>
-            </div>
-            
-            <div class="flex items-baseline gap-1 mb-1">
-                <h3 class="text-3xl font-bold text-white">{{ avg_quiz|default(0) }}%</h3>
-                <span class="text-xs text-slate-500">avg</span>
-            </div>
-            <p class="text-sm text-slate-400">Quiz Score</p>
-            
-            <div class="mt-3 h-2 bg-slate-800 rounded-full overflow-hidden">
-                <div class="h-full rounded-full transition-all duration-1000 bg-gradient-to-r from-emerald-500 to-emerald-400" style="width: {{ avg_quiz|default(0) }}%"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Quiz Pass Rate -->
-    <div class="glass-card rounded-2xl p-5 relative overflow-hidden group hover:scale-[1.02] transition-all">
-        <div class="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl -mr-16 -mt-16 group-hover:bg-purple-500/20 transition-colors"></div>
-        <div class="relative z-10">
-            <div class="flex items-center justify-between mb-3">
-                <div class="p-2 bg-purple-500/20 rounded-lg">
-                    <i class="bi bi-trophy-fill text-purple-400 text-xl"></i>
-                </div>
-                {% set pass_rate = (quizzes_passed / total_quizzes * 100)|default(0) %}
-                {% if pass_rate >= 80 %}
-                <span class="text-xs font-medium text-purple-400 bg-purple-500/10 px-2 py-1 rounded-full">Top 10%</span>
-                {% endif %}
-            </div>
-            
-            <div class="flex items-baseline gap-1 mb-1">
-                <h3 class="text-3xl font-bold text-white">{{ quizzes_passed|default(0) }}/{{ total_quizzes|default(0) }}</h3>
-            </div>
-            <p class="text-sm text-slate-400">Quizzes Passed</p>
-            
-            <div class="mt-3 flex items-center gap-2">
-                <div class="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
-                    <div class="h-full rounded-full transition-all duration-1000 bg-gradient-to-r from-purple-500 to-purple-400" style="width: {{ pass_rate }}%"></div>
-                </div>
-                <span class="text-xs text-slate-500">{{ pass_rate|round }}%</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- Attendance -->
-    <div class="glass-card rounded-2xl p-5 relative overflow-hidden group hover:scale-[1.02] transition-all">
-        <div class="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl -mr-16 -mt-16 group-hover:bg-amber-500/20 transition-colors"></div>
-        <div class="relative z-10">
-            <div class="flex items-center justify-between mb-3">
-                <div class="p-2 bg-amber-500/20 rounded-lg">
-                    <i class="bi bi-calendar-check-fill text-amber-400 text-xl"></i>
-                </div>
-                {% if attendance_rate >= 90 %}
-                <span class="text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-full flex items-center gap-1">
-                    <i class="bi bi-fire"></i> Streak!
-                </span>
-                {% endif %}
-            </div>
-            
-            <div class="flex items-baseline gap-1 mb-1">
-                <h3 class="text-3xl font-bold text-white">{{ attendance_rate|default(0) }}%</h3>
-            </div>
-            <p class="text-sm text-slate-400">Attendance</p>
-            
-            <div class="mt-3 h-2 bg-slate-800 rounded-full overflow-hidden">
-                <div class="h-full rounded-full transition-all duration-1000 bg-gradient-to-r from-amber-500 to-amber-400" style="width: {{ attendance_rate|default(0) }}%"></div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Main Content Grid -->
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <!-- Left Column: Course Performance & Skills -->
-    <div class="lg:col-span-2 space-y-6">
-        <!-- Course Performance -->
-        <div class="glass-card rounded-2xl p-6">
-            <div class="flex items-center justify-between mb-6">
                 <div>
-                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
-                        <i class="bi bi-book-half text-blue-400"></i>
-                        Course Performance
-                    </h3>
-                    <p class="text-sm text-slate-400">Your progress across all enrolled courses</p>
+                    <h3 class="font-display font-bold text-lg text-white">Overall Grade</h3>
+                    <p class="text-slate-400 text-sm">Average across all assessments</p>
                 </div>
-                <button onclick="viewAllCourses()" class="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1">
-                    View All
-                    <i class="bi bi-arrow-right"></i>
-                </button>
             </div>
+            <div class="text-3xl font-bold text-white mb-2">{{ avg_mark }}%</div>
+            <div class="w-full bg-slate-700 rounded-full h-2">
+                <div class="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full" style="width: {{ avg_mark }}%"></div>
+            </div>
+        </div>
 
-            {% if course_progress %}
+        <div class="bento-item glass-card-premium rounded-2xl p-6">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+                    <i class="bi bi-question-circle text-2xl text-white"></i>
+                </div>
+                <div>
+                    <h3 class="font-display font-bold text-lg text-white">Quiz Performance</h3>
+                    <p class="text-slate-400 text-sm">Average quiz score</p>
+                </div>
+            </div>
+            <div class="text-3xl font-bold text-white mb-2">{{ avg_quiz }}%</div>
+            <div class="text-sm text-slate-300">Passed: {{ quizzes_passed }}/{{ total_quizzes }}</div>
+        </div>
+
+        <div class="bento-item glass-card-premium rounded-2xl p-6">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
+                    <i class="bi bi-calendar-check text-2xl text-white"></i>
+                </div>
+                <div>
+                    <h3 class="font-display font-bold text-lg text-white">Attendance Rate</h3>
+                    <p class="text-slate-400 text-sm">Overall attendance</p>
+                </div>
+            </div>
+            <div class="text-3xl font-bold text-white mb-2">{{ attendance_rate }}%</div>
+            <div class="w-full bg-slate-700 rounded-full h-2">
+                <div class="bg-gradient-to-r from-orange-500 to-red-500 h-2 rounded-full" style="width: {{ attendance_rate }}%"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Course Progress -->
+    <div class="glass-card-premium rounded-2xl p-6">
+        <h3 class="font-display font-bold text-xl text-white mb-6">Course Progress</h3>
+        {% if course_progress %}
             <div class="space-y-4">
                 {% for course in course_progress %}
-                <div class="p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-all group">
-                    <div class="flex items-center justify-between mb-3">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-{{ ['blue', 'purple', 'emerald', 'amber'][loop.index0 % 4] }}-500/20 to-{{ ['blue', 'purple', 'emerald', 'amber'][loop.index0 % 4] }}-600/10 flex items-center justify-center text-{{ ['blue', 'purple', 'emerald', 'amber'][loop.index0 % 4] }}-400 font-bold border border-{{ ['blue', 'purple', 'emerald', 'amber'][loop.index0 % 4] }}-500/20">
-                                {{ course.name[0] }}
-                            </div>
-                            <div>
-                                <h4 class="font-medium text-white group-hover:text-blue-300 transition-colors">{{ course.name }}</h4>
-                                <p class="text-xs text-slate-500">{{ course.marks_count }} marks • {{ course.quizzes_count }} quizzes</p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-2xl font-bold {{ 'text-emerald-400' if course.avg >= 80 else 'text-blue-400' if course.avg >= 60 else 'text-amber-400' }}">
-                                {{ course.avg }}%
-                            </span>
-                        </div>
+                <div class="flex items-center justify-between p-4 rounded-xl bg-white/5">
+                    <div>
+                        <h4 class="font-semibold text-white">{{ course.name }}</h4>
+                        <p class="text-sm text-slate-400">{{ course.marks_count }} assessments • {{ course.quizzes_count }} quizzes</p>
                     </div>
-                    
-                    <div class="flex items-center gap-4 mb-3">
-                        <div class="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
-                            <div class="h-full rounded-full bg-gradient-to-r from-{{ ['blue', 'purple', 'emerald', 'amber'][loop.index0 % 4] }}-500 to-{{ ['blue', 'purple', 'emerald', 'amber'][loop.index0 % 4] }}-400" style="width: {{ course.avg }}%"></div>
-                        </div>
-                    </div>
-                    
-                    <div class="flex items-center gap-4 text-xs">
-                        <div class="flex items-center gap-1 text-slate-400">
-                            <i class="bi bi-clipboard-data text-slate-500"></i>
-                            {{ course.marks_count }} assessments
-                        </div>
-                        <div class="flex items-center gap-1 text-slate-400">
-                            <i class="bi bi-question-circle text-slate-500"></i>
-                            {{ course.quizzes_count }} quizzes
-                        </div>
-                        <div class="ml-auto">
-                            <a href="{{ url_for('courses.detail', course_id=course.id) }}" class="text-blue-400 hover:text-blue-300 flex items-center gap-1">
-                                Details <i class="bi bi-chevron-right"></i>
-                            </a>
+                    <div class="text-right">
+                        <div class="text-lg font-bold text-white">{{ course.avg }}%</div>
+                        <div class="w-24 bg-slate-700 rounded-full h-2">
+                            <div class="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full" style="width: {{ course.avg }}%"></div>
                         </div>
                     </div>
                 </div>
                 {% endfor %}
             </div>
-            {% else %}
-            <div class="text-center py-12">
-                <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-slate-800/50 flex items-center justify-center">
-                    <i class="bi bi-book text-3xl text-slate-600"></i>
-                </div>
-                <p class="text-slate-400 mb-4">No course data available yet</p>
-                <a href="{{ url_for('courses.index') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-all">
-                    <i class="bi bi-plus-lg"></i>
-                    Enroll in Courses
-                </a>
-            </div>
-            {% endif %}
-        </div>
-
-        <!-- Learning Activity Timeline -->
-        <div class="glass-card rounded-2xl p-6">
-            <div class="flex items-center justify-between mb-6">
-                <div>
-                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
-                        <i class="bi bi-graph-up text-emerald-400"></i>
-                        Learning Activity
-                    </h3>
-                    <p class="text-sm text-slate-400">Your engagement over the past 30 days</p>
-                </div>
-            </div>
-            <div class="h-64">
-                <canvas id="activityChart"></canvas>
-            </div>
-        </div>
+        {% else %}
+            <p class="text-slate-400 text-center py-8">No course data available yet.</p>
+        {% endif %}
     </div>
 
-    <!-- Right Column: Achievements & Insights -->
-    <div class="space-y-6">
-        <!-- Achievement Badges -->
-        <div class="glass-card rounded-2xl p-6">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-bold text-white flex items-center gap-2">
-                    <i class="bi bi-stars text-amber-400"></i>
-                    Achievements
-                </h3>
-                <span class="text-xs text-slate-500">{{ badges|length|default(3) }}/12</span>
+    <!-- Risk Assessment -->
+    {% if risk %}
+    <div class="glass-card-premium rounded-2xl p-6">
+        <h3 class="font-display font-bold text-xl text-white mb-6">Risk Assessment</h3>
+        <div class="flex items-center justify-between">
+            <div>
+                <div class="text-lg font-bold text-white mb-1">
+                    {% if risk.risk_level == 'low' %}Low Risk
+                    {% elif risk.risk_level == 'medium' %}Medium Risk
+                    {% elif risk.risk_level == 'high' %}High Risk
+                    {% else %}Critical Risk{% endif %}
+                </div>
+                <p class="text-slate-400 text-sm">Risk Score: {{ risk.risk_score }}/100</p>
             </div>
-            
-            <div class="grid grid-cols-3 gap-3">
-                <div class="aspect-square rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/20 flex flex-col items-center justify-center p-2 group hover:scale-110 transition-transform cursor-pointer" title="Perfect Attendance">
-                    <i class="bi bi-fire text-2xl text-amber-400 mb-1 group-hover:animate-pulse"></i>
-                    <span class="text-[10px] text-center text-slate-400 leading-tight">On Fire</span>
-                </div>
-                <div class="aspect-square rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/10 border border-blue-500/20 flex flex-col items-center justify-center p-2 group hover:scale-110 transition-transform cursor-pointer" title="Quiz Master">
-                    <i class="bi bi-trophy text-2xl text-blue-400 mb-1"></i>
-                    <span class="text-[10px] text-center text-slate-400 leading-tight">Quiz Master</span>
-                </div>
-                <div class="aspect-square rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border border-emerald-500/20 flex flex-col items-center justify-center p-2 group hover:scale-110 transition-transform cursor-pointer" title="Fast Learner">
-                    <i class="bi bi-lightning-charge text-2xl text-emerald-400 mb-1"></i>
-                    <span class="text-[10px] text-center text-slate-400 leading-tight">Speedy</span>
-                </div>
-                <div class="aspect-square rounded-xl bg-slate-800/50 border border-white/5 flex flex-col items-center justify-center p-2 opacity-50 grayscale">
-                    <i class="bi bi-lock text-xl text-slate-600 mb-1"></i>
-                    <span class="text-[10px] text-center text-slate-500 leading-tight">Locked</span>
-                </div>
-                <div class="aspect-square rounded-xl bg-slate-800/50 border border-white/5 flex flex-col items-center justify-center p-2 opacity-50 grayscale">
-                    <i class="bi bi-lock text-xl text-slate-600 mb-1"></i>
-                    <span class="text-[10px] text-center text-slate-500 leading-tight">Locked</span>
-                </div>
-                <div class="aspect-square rounded-xl bg-slate-800/50 border border-white/5 flex flex-col items-center justify-center p-2 opacity-50 grayscale">
-                    <i class="bi bi-lock text-xl text-slate-600 mb-1"></i>
-                    <span class="text-[10px] text-center text-slate-500 leading-tight">Locked</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- AI Insights -->
-        <div class="glass-card rounded-2xl p-6">
-            <div class="flex items-center gap-2 mb-4">
-                <div class="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
-                    <i class="bi bi-robot text-white text-lg"></i>
-                </div>
-                <h3 class="text-lg font-bold text-white">AI Insights</h3>
-            </div>
-            
-            <div class="space-y-3">
-                <div class="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
-                    <div class="flex items-start gap-2">
-                        <i class="bi bi-lightbulb-fill text-blue-400 mt-1"></i>
-                        <div>
-                            <p class="text-sm font-medium text-blue-300 mb-1">Study Tip</p>
-                            <p class="text-xs text-slate-400">Your quiz scores improve by 15% when you review materials within 24 hours. Try spaced repetition!</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                    <div class="flex items-start gap-2">
-                        <i class="bi bi-graph-up-arrow text-emerald-400 mt-1"></i>
-                        <div>
-                            <p class="text-sm font-medium text-emerald-300 mb-1">You're Improving!</p>
-                            <p class="text-xs text-slate-400">Your average has increased 8% over the last month. Keep up the great work!</p>
-                        </div>
-                    </div>
-                </div>
-                
-                {% if avg_mark < 70 %}
-                <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                    <div class="flex items-start gap-2">
-                        <i class="bi bi-exclamation-circle-fill text-amber-400 mt-1"></i>
-                        <div>
-                            <p class="text-sm font-medium text-amber-300 mb-1">Focus Area</p>
-                            <p class="text-xs text-slate-400">Consider using the AI Tutor for extra practice. Students who do score 20% higher.</p>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Next Milestone -->
-        <div class="glass-card rounded-2xl p-6">
-            <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <i class="bi bi-flag-fill text-red-400"></i>
-                Next Milestone
-            </h3>
-            
-            <div class="space-y-4">
-                <div>
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-sm text-slate-300">Dean's List (85% avg)</span>
-                        <span class="text-sm font-bold {{ 'text-emerald-400' if avg_mark >= 85 else 'text-white' }}">
-                            {{ avg_mark|default(0) }}/85%
-                        </span>
-                    </div>
-                    <div class="h-2 bg-slate-800 rounded-full overflow-hidden">
-                        <div class="h-full bg-gradient-to-r from-red-500 to-emerald-500 rounded-full" style="width: {{ (avg_mark / 85 * 100)|default(0) }}%"></div>
-                    </div>
-                    <p class="text-xs text-slate-500 mt-2">
-                        {% if avg_mark >= 85 %}
-                        🎉 Congratulations! You've made the Dean's List!
-                        {% else %}
-                        {{ (85 - avg_mark)|default(85) }}% more needed
-                        {% endif %}
-                    </p>
-                </div>
-                
-                <div>
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-sm text-slate-300">Quiz Master (20 quizzes)</span>
-                        <span class="text-sm font-bold text-white">{{ total_quizzes|default(0) }}/20</span>
-                    </div>
-                    <div class="h-2 bg-slate-800 rounded-full overflow-hidden">
-                        <div class="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full" style="width: {{ (total_quizzes / 20 * 100)|default(0) }}%"></div>
-                    </div>
+            <div class="text-right">
+                <div class="w-16 h-16 rounded-full flex items-center justify-center
+                    {% if risk.risk_level == 'low' %}bg-green-500/20 text-green-400
+                    {% elif risk.risk_level == 'medium' %}bg-yellow-500/20 text-yellow-400
+                    {% elif risk.risk_level == 'high' %}bg-orange-500/20 text-orange-400
+                    {% else %}bg-red-500/20 text-red-400{% endif %}">
+                    <i class="bi bi-exclamation-triangle text-2xl"></i>
                 </div>
             </div>
         </div>
     </div>
+    {% endif %}
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script>
-    // Chart Configuration
-    Chart.defaults.color = '#94a3b8';
-    Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
-    
-    // Learning Activity Chart
-    const ctx = document.getElementById('activityChart').getContext('2d');
-    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-    gradient.addColorStop(0, 'rgba(16, 185, 129, 0.3)');
-    gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
-    
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
-            datasets: [{
-                label: 'Study Hours',
-                data: [12, 15, 18, 22],
-                borderColor: '#10b981',
-                backgroundColor: gradient,
-                fill: true,
-                tension: 0.4,
-                borderWidth: 3
-            }, {
-                label: 'Quiz Scores',
-                data: [65, 72, 78, 82],
-                borderColor: '#3b82f6',
-                backgroundColor: 'transparent',
-                borderWidth: 2,
-                borderDash: [5, 5],
-                tension: 0.4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top',
-                    align: 'end',
-                    labels: {
-                        usePointStyle: true,
-                        pointStyle: 'circle',
-                        padding: 15
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(255, 255, 255, 0.05)' }
-                },
-                x: {
-                    grid: { display: false }
-                }
-            }
-        }
-    });
-    
-    // Animate progress bars on load
-    window.addEventListener('load', () => {
-        document.querySelectorAll('[style*="width:"]').forEach(bar => {
-            const width = bar.style.width;
-            bar.style.width = '0%';
-            setTimeout(() => {
-                bar.style.width = width;
-            }, 100);
-        });
-    });
-    
-    function viewAllCourses() {
-        window.location.href = '{{ url_for("courses.index") }}';
-    }
-</script>
 {% endblock %}

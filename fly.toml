@@ -1,0 +1,26 @@
+# fly.toml file generated for EduMind AI on 2026-03-18
+
+app = "edumind-ai"
+primary_region = "jnb"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  # Set production environment
+  FLASK_ENV = "production"
+  # SQLite database path (uses mounted volume for persistence)
+  SQLITE_DB_PATH = "/app/data/edumind_ai.db"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  vcpus = 1
+
+[[mounts]]
+source = "edumind_data"
+destination = "/app/data"

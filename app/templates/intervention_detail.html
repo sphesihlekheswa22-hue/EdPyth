@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Message - EduMind AI{% endblock %}
+
+{% block content %}
+<div class="p-6 lg:p-8">
+    <div class="max-w-3xl mx-auto">
+        <!-- Back Link -->
+        <a href="{{ url_for('notifications.interventions_received') }}" class="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-6">
+            <i class="bi bi-arrow-left"></i>
+            Back to Messages
+        </a>
+
+        <!-- Message Card -->
+        <div class="glass-card rounded-2xl overflow-hidden">
+            <!-- Header -->
+            <div class="p-6 border-b border-white/10">
+                <div class="flex items-start gap-4">
+                    <div class="w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-xl font-bold flex-shrink-0">
+                        {{ intervention.lecturer.user.first_name[0] if intervention.lecturer.user else 'L' }}
+                    </div>
+                    <div class="flex-1">
+                        <h1 class="text-2xl font-bold text-white">{{ intervention.subject }}</h1>
+                        <p class="text-slate-400 mt-1">
+                            From {{ intervention.lecturer.user.full_name if intervention.lecturer.user else 'Lecturer' }}
+                            {% if intervention.course %}
+                            • {{ intervention.course.code }} - {{ intervention.course.name }}
+                            {% endif %}
+                        </p>
+                        <p class="text-sm text-slate-500 mt-1">
+                            {{ intervention.sent_at.strftime('%B %d, %Y at %H:%M') if intervention.sent_at else '' }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Message Content -->
+            <div class="p-6">
+                <div class="prose prose-invert max-w-none">
+                    <p class="text-white whitespace-pre-wrap">{{ intervention.content }}</p>
+                </div>
+            </div>
+
+            <!-- Reply Section -->
+            <div class="p-6 border-t border-white/10 bg-white/5">
+                <h3 class="font-semibold text-white mb-4">Reply</h3>
+                
+                <form id="replyForm" class="space-y-4">
+                    <textarea id="replyMessage" rows="4" 
+                        class="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all resize-none" 
+                        placeholder="Write your reply..."></textarea>
+                    
+                    <button type="submit" id="replyBtn" class="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl transition-all flex items-center gap-2">
+                        <i class="bi bi-reply"></i>
+                        <span>Send Reply</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('replyForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const message = document.getElementById('replyMessage').value.trim();
+    const btn = document.getElementById('replyBtn');
+    
+    if (!message) {
+        alert('Please enter a message');
+        return;
+    }
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split animate-spin"></i> Sending...';
+    
+    try {
+        const response = await fetch(`/notifications/api/interventions/{{ intervention.id }}/reply`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+            },
+            body: JSON.stringify({ message: message })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert('Reply sent successfully!');
+            window.location.reload();
+        } else {
+            throw new Error(data.error || 'Failed to send reply');
+        }
+    } catch (error) {
+        alert(error.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-reply"></i><span>Send Reply</span>';
+    }
+});
+</script>
+{% endblock %}

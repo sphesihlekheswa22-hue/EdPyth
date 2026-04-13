@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+
+{% block title %}My Materials - EduMind AI{% endblock %}
+
+{% block page_title %}My Materials{% endblock %}
+
+{% block content %}
+<!-- Safe Variable Initialization -->
+{% set materials_list = materials|default([], true) %}
+{% set materials_count = materials_list|length %}
+
+<div class="space-y-6">
+    <!-- Header Card with Stats -->
+    <div class="glass-panel rounded-3xl p-8 relative overflow-hidden group">
+        <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-teal-500/10 to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+        <div class="absolute top-0 right-0 w-64 h-64 bg-emerald-500/20 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none"></div>
+        
+        <div class="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 float-element">
+                    <i class="bi bi-file-earmark-text-fill text-white text-2xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-3xl font-display font-bold text-white tracking-tight">My Materials</h2>
+                    <p class="text-slate-400 text-sm mt-1">
+                        {{ materials_count }} material{% if materials_count != 1 %}s{% endif %} from your enrolled courses
+                    </p>
+                </div>
+            </div>
+            <a href="{{ url_for('courses.index') }}"
+               class="group/btn inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-slate-200 transition-all text-sm font-semibold relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/10 to-emerald-500/0 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700"></div>
+                <i class="bi bi-compass relative z-10"></i>
+                <span class="relative z-10">Browse courses</span>
+            </a>
+        </div>
+        
+        <!-- Quick Stats -->
+        {% if materials_count > 0 %}
+        <div class="mt-6 pt-6 border-t border-white/10 grid grid-cols-4 gap-4">
+            <div class="text-center">
+                <p class="text-2xl font-bold text-white">{{ materials_count }}</p>
+                <p class="text-xs text-slate-400 mt-1">Total</p>
+            </div>
+            <div class="text-center border-x border-white/10">
+                <p class="text-2xl font-bold text-blue-400">
+                    {% set lecture_count = namespace(value=0) %}
+                    {% for item in materials_list %}
+                        {% if item and item.material and item.material.category == 'lecture' %}
+                            {% set lecture_count.value = lecture_count.value + 1 %}
+                        {% endif %}
+                    {% endfor %}
+                    {{ lecture_count.value }}
+                </p>
+                <p class="text-xs text-slate-400 mt-1">Lectures</p>
+            </div>
+            <div class="text-center border-r border-white/10">
+                <p class="text-2xl font-bold text-purple-400">
+                    {% set assignment_count = namespace(value=0) %}
+                    {% for item in materials_list %}
+                        {% if item and item.material and item.material.category == 'assignment' %}
+                            {% set assignment_count.value = assignment_count.value + 1 %}
+                        {% endif %}
+                    {% endfor %}
+                    {{ assignment_count.value }}
+                </p>
+                <p class="text-xs text-slate-400 mt-1">Assignments</p>
+            </div>
+            <div class="text-center">
+                <p class="text-2xl font-bold text-emerald-400">
+                    {% set ref_count = namespace(value=0) %}
+                    {% for item in materials_list %}
+                        {% if item and item.material and item.material.category == 'reference' %}
+                            {% set ref_count.value = ref_count.value + 1 %}
+                        {% endif %}
+                    {% endfor %}
+                    {{ ref_count.value }}
+                </p>
+                <p class="text-xs text-slate-400 mt-1">References</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if materials_count > 0 %}
+        <!-- Materials Bento Grid [^65^] -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {% for item in materials_list %}
+            {% if item and item.material %}
+            {% set material = item.material %}
+            {% set module = item.module|default(None) %}
+            {% set course = item.course|default(None) %}
+            
+            {% set mat_title = material.title|default('Untitled Material') %}
+            {% set mat_desc = material.description|default('') %}
+            {% set mat_category = material.category|default('general') %}
+            {% set mat_file_type = material.file_type|default('PDF')|upper %}
+            {% set mat_file_name = material.file_name|default('unknown.file') %}
+            {% set mat_file_size = material.file_size|default(0) %}
+            {% set mat_downloads = material.download_count|default(0) %}
+            {% set mat_id = material.id|default(0) %}
+            {% set mod_title = module.title|default('Unknown Module') if module else 'Unknown Module' %}
+            {% set course_name = course.name|default('Unknown Course') if course else 'Unknown Course' %}
+            
+            <!-- Material Card -->
+            <div class="glass-panel rounded-2xl p-6 relative overflow-hidden group hover:scale-[1.02] transition-all duration-300"
+                 style="animation: slide-up 0.5s ease-out {{ loop.index * 0.08 }}s both;">
+                
+                <!-- Category Color Bar -->
+                <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r 
+                    {% if mat_category == 'lecture' %}from-blue-500 to-blue-400
+                    {% elif mat_category == 'assignment' %}from-purple-500 to-purple-400
+                    {% elif mat_category == 'reference' %}from-emerald-500 to-emerald-400
+                    {% else %}from-slate-500 to-slate-400{% endif %}">
+                </div>
+                
+                <!-- Hover Glow -->
+                <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+
+                <!-- Card Header -->
+                <div class="flex items-start justify-between mb-4 relative z-10">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <!-- File Type Icon -->
+                        <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0
+                            {% if mat_file_type in ['PDF'] %}bg-red-500/20 text-red-400
+                            {% elif mat_file_type in ['DOC', 'DOCX'] %}bg-blue-500/20 text-blue-400
+                            {% elif mat_file_type in ['PPT', 'PPTX'] %}bg-orange-500/20 text-orange-400
+                            {% elif mat_file_type in ['XLS', 'XLSX'] %}bg-green-500/20 text-green-400
+                            {% elif mat_file_type in ['ZIP', 'RAR'] %}bg-yellow-500/20 text-yellow-400
+                            {% elif mat_file_type in ['MP4', 'AVI', 'MOV'] %}bg-pink-500/20 text-pink-400
+                            {% else %}bg-emerald-500/20 text-emerald-400{% endif %}">
+                            <i class="bi bi-file-earmark-{{ 
+                                'pdf' if mat_file_type == 'PDF' else 
+                                'word' if mat_file_type in ['DOC', 'DOCX'] else 
+                                'ppt' if mat_file_type in ['PPT', 'PPTX'] else 
+                                'excel' if mat_file_type in ['XLS', 'XLSX'] else 
+                                'zip' if mat_file_type in ['ZIP', 'RAR'] else 
+                                'play' if mat_file_type in ['MP4', 'AVI', 'MOV'] else 
+                                'text' 
+                            }} text-2xl"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <h3 class="font-display font-bold text-lg text-white tracking-tight truncate group-hover:text-emerald-300 transition-colors">{{ mat_title }}</h3>
+                            <p class="text-sm text-slate-400 truncate">{{ mod_title }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Category Badge -->
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border flex-shrink-0
+                        {% if mat_category == 'lecture' %}bg-blue-500/10 text-blue-300 border-blue-500/20
+                        {% elif mat_category == 'assignment' %}bg-purple-500/10 text-purple-300 border-purple-500/20
+                        {% elif mat_category == 'reference' %}bg-emerald-500/10 text-emerald-300 border-emerald-500/20
+                        {% else %}bg-slate-700/50 text-slate-300 border-slate-600/30{% endif %}">
+                        {{ mat_category|title }}
+                    </span>
+                </div>
+
+                <!-- Description -->
+                {% if mat_desc %}
+                <p class="text-slate-300 text-sm mb-4 line-clamp-2 leading-relaxed relative z-10">
+                    {{ mat_desc }}
+                </p>
+                {% endif %}
+
+                <!-- Course Tag -->
+                <div class="mb-4 relative z-10">
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-white/5 text-slate-400 border border-white/5">
+                        <i class="bi bi-book"></i>
+                        {{ course_name }}
+                    </span>
+                </div>
+
+                <!-- File Info -->
+                <div class="flex items-center justify-between mb-5 relative z-10">
+                    <div class="flex items-center gap-3 text-xs text-slate-400">
+                        <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-white/5">
+                            <i class="bi bi-file-earmark"></i>
+                            {{ mat_file_type }}
+                        </span>
+                        <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-white/5">
+                            <i class="bi bi-hdd"></i>
+                            {% if mat_file_size > 1048576 %}
+                                {{ (mat_file_size / 1048576)|round(1) }} MB
+                            {% elif mat_file_size > 1024 %}
+                                {{ (mat_file_size / 1024)|round(1) }} KB
+                            {% else %}
+                                {{ mat_file_size }} B
+                            {% endif %}
+                        </span>
+                    </div>
+                    <span class="text-xs text-slate-500 flex items-center gap-1">
+                        <i class="bi bi-download"></i>
+                        {{ mat_downloads }}
+                    </span>
+                </div>
+
+                <!-- Download Button -->
+                <a href="{{ url_for('materials.download_material', material_id=mat_id) }}"
+                   class="relative z-10 w-full py-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 hover:text-emerald-200 border border-emerald-500/20 hover:border-emerald-500/30 transition-all text-sm font-semibold flex items-center justify-center gap-2 group/btn overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/10 to-emerald-500/0 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700"></div>
+                    <i class="bi bi-download relative z-10 group-hover/btn:animate-bounce"></i>
+                    <span class="relative z-10">Download</span>
+                </a>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    {% else %}
+        <!-- Empty State -->
+        <div class="glass-panel rounded-3xl p-16 text-center max-w-2xl mx-auto relative overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-teal-500/5 to-cyan-500/5 pointer-events-none"></div>
+            
+            <div class="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-slate-700/50 to-slate-800/50 flex items-center justify-center relative">
+                <div class="absolute inset-0 rounded-3xl bg-emerald-500/10 animate-pulse pointer-events-none"></div>
+                <i class="bi bi-file-earmark-text text-5xl text-slate-400 relative z-10"></i>
+            </div>
+            
+            <h3 class="font-display font-bold text-2xl text-white mb-3">No Materials Available</h3>
+            <p class="text-slate-400 mb-8 max-w-md mx-auto text-lg leading-relaxed">
+                No published materials in your enrolled courses yet. Explore our diploma programs to access learning resources.
+            </p>
+            
+            <a href="{{ url_for('courses.index') }}" class="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl font-semibold text-white shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all hover:-translate-y-0.5">
+                <i class="bi bi-book"></i>
+                Browse Courses
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+    /* Slide Up Animation */
+    @keyframes slide-up {
+        from { 
+            opacity: 0; 
+            transform: translateY(20px); 
+        }
+        to { 
+            opacity: 1; 
+            transform: translateY(0); 
+        }
+    }
+    
+    /* Float Animation */
+    @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+    }
+    
+    .float-element {
+        animation: float 6s ease-in-out infinite;
+    }
+    
+    /* Glass Panel */
+    .glass-panel {
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+    
+    /* Line Clamp */
+    .line-clamp-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    
+    /* Bounce Animation for Download Icon */
+    @keyframes bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-3px); }
+    }
+    
+    .group-hover\\:animate-bounce:hover {
+        animation: bounce 0.6s ease infinite;
+    }
+</style>
+{% endblock %}

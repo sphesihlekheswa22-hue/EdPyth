@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}CV review feedback — {{ review.file_name }}{% endblock %}
+
+{% block page_title %}Your CV review{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="glass-card rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500/30 to-purple-500/30 flex items-center justify-center">
+                <i class="bi bi-file-earmark-pdf text-2xl text-red-400"></i>
+            </div>
+            <div>
+                <h2 class="text-lg font-semibold text-white">{{ review.file_name }}</h2>
+                <p class="text-sm text-slate-400">Submitted {{ review.created_at.strftime('%b %d, %Y') }}</p>
+            </div>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            <a href="{{ url_for('career.download_cv', review_id=review.id, inline=1) }}" target="_blank" rel="noopener"
+               class="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-slate-300 hover:text-white hover:border-blue-500/40 transition-all flex items-center gap-2">
+                <i class="bi bi-eye text-blue-400"></i> Open my CV
+            </a>
+            <a href="{{ url_for('career.download_cv', review_id=review.id) }}"
+               class="px-4 py-2 rounded-xl bg-blue-500/15 border border-blue-500/30 text-sm text-blue-300 hover:bg-blue-500/25 transition-all flex items-center gap-2">
+                <i class="bi bi-download"></i> Download
+            </a>
+            <a href="{{ url_for('career.dashboard') }}" class="px-4 py-2 rounded-xl text-sm text-slate-400 hover:text-white border border-transparent hover:border-white/10 transition-all">
+                ← Career dashboard
+            </a>
+        </div>
+    </div>
+
+    {% if review.status == 'pending' %}
+    <div class="glass-card rounded-2xl p-8 border border-amber-500/20 bg-amber-500/5 text-center">
+        <i class="bi bi-hourglass-split text-4xl text-amber-400 mb-4"></i>
+        <h3 class="text-xl font-semibold text-white mb-2">Waiting for your career advisor</h3>
+        <p class="text-slate-400 max-w-md mx-auto">
+            Your CV is in the queue. When an advisor finishes the review, you will see their score and personalized advice on this page.
+            You may get a notification when it is ready.
+        </p>
+    </div>
+    {% else %}
+    <!-- Score -->
+    {% if review.job_readiness_score is not none %}
+    <div class="glass-card rounded-2xl p-6">
+        <div class="flex items-center justify-between mb-3">
+            <span class="text-sm font-medium text-slate-300 uppercase tracking-wider">Job readiness score</span>
+            <span class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">{{ review.job_readiness_score|round|int }}%</span>
+        </div>
+        <div class="h-3 bg-slate-800 rounded-full overflow-hidden">
+            <div class="h-full rounded-full bg-gradient-to-r from-blue-500 to-emerald-500 transition-all" style="width: {{ review.job_readiness_score if review.job_readiness_score <= 100 else 100 }}%"></div>
+        </div>
+        {% if review.reviewer %}
+        <p class="text-xs text-slate-500 mt-3">
+            Reviewed by <span class="text-slate-400">{{ review.reviewer.full_name }}</span>
+            {% if review.reviewed_at %} · {{ review.reviewed_at.strftime('%b %d, %Y') }}{% endif %}
+        </p>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="grid gap-6 md:grid-cols-1">
+        {% if review.strengths %}
+        <div class="glass-card rounded-2xl p-6 border-l-4 border-emerald-500/60">
+            <h3 class="text-sm font-semibold text-emerald-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <i class="bi bi-hand-thumbs-up-fill"></i> Strengths
+            </h3>
+            <div class="text-slate-300 whitespace-pre-wrap leading-relaxed">{{ review.strengths }}</div>
+        </div>
+        {% endif %}
+
+        {% if review.weaknesses %}
+        <div class="glass-card rounded-2xl p-6 border-l-4 border-amber-500/60">
+            <h3 class="text-sm font-semibold text-amber-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <i class="bi bi-arrow-up-circle-fill"></i> Areas to improve
+            </h3>
+            <div class="text-slate-300 whitespace-pre-wrap leading-relaxed">{{ review.weaknesses }}</div>
+        </div>
+        {% endif %}
+
+        {% if review.recommendations %}
+        <div class="glass-card rounded-2xl p-6 border-l-4 border-purple-500/60">
+            <h3 class="text-sm font-semibold text-purple-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <i class="bi bi-lightbulb-fill"></i> Advisor recommendations
+            </h3>
+            <div class="text-slate-300 whitespace-pre-wrap leading-relaxed">{{ review.recommendations }}</div>
+        </div>
+        {% endif %}
+
+        {% if review.interview_tips %}
+        <div class="glass-card rounded-2xl p-6 border-l-4 border-cyan-500/60">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <i class="bi bi-chat-quote-fill"></i> Interview tips
+            </h3>
+            <div class="text-slate-300 whitespace-pre-wrap leading-relaxed">{{ review.interview_tips }}</div>
+        </div>
+        {% endif %}
+
+        {% if suggested_skills %}
+        <div class="glass-card rounded-2xl p-6">
+            <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <i class="bi bi-stars text-cyan-400"></i> Suggested skills to build
+            </h3>
+            <ul class="flex flex-wrap gap-2">
+                {% for s in suggested_skills %}
+                <li class="px-3 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/25 text-sm text-cyan-200">{{ s }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if suggested_projects %}
+        <div class="glass-card rounded-2xl p-6">
+            <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <i class="bi bi-kanban text-pink-400"></i> Suggested projects
+            </h3>
+            <ul class="space-y-2">
+                {% for p in suggested_projects %}
+                <li class="flex gap-2 text-slate-300 text-sm">
+                    <i class="bi bi-check2-circle text-pink-400 flex-shrink-0 mt-0.5"></i>
+                    <span>{{ p }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if not review.strengths and not review.weaknesses and not review.recommendations and not review.interview_tips and not suggested_skills and not suggested_projects %}
+    <div class="glass-card rounded-2xl p-6 text-center text-slate-400">
+        <p>Your advisor marked this as reviewed. Detailed written feedback may be added soon — check back later or contact career services.</p>
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
+{% endblock %}

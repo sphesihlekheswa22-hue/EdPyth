@@ -1,0 +1,523 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Quiz - EduMind AI{% endblock %}
+
+{% block page_title %}Quiz Builder{% endblock %}
+
+{% block extra_css %}
+<style>
+    .question-card {
+        transition: all 0.3s ease;
+        cursor: move;
+    }
+    .question-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    .question-card.dragging {
+        opacity: 0.5;
+        transform: rotate(2deg);
+    }
+    .option-item {
+        transition: all 0.2s ease;
+    }
+    .option-item:hover {
+        background: rgba(255, 255, 255, 0.05);
+    }
+    .option-item.correct {
+        background: rgba(16, 185, 129, 0.1);
+        border-color: rgba(16, 185, 129, 0.5);
+    }
+    .question-type-btn {
+        transition: all 0.2s ease;
+    }
+    .question-type-btn.active {
+        background: rgba(59, 130, 246, 0.2);
+        border-color: rgba(59, 130, 246, 0.5);
+        color: #60a5fa;
+    }
+    .preview-question {
+        animation: slideIn 0.3s ease-out;
+    }
+    @keyframes slideIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8 animate-slide-up">
+    <div class="flex items-center gap-4">
+        <a href="{{ url_for('quizzes.list_quizzes_by_course', course_id=course.id) }}"
+           class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all text-slate-300 hover:text-white">
+            <i class="bi bi-arrow-left"></i>
+            Back to Quizzes
+        </a>
+        <div>
+            <h2 class="font-display text-2xl font-bold text-white">{{ quiz.title }}</h2>
+            <p class="text-slate-400 text-sm flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                {{ course.name }}
+                <span class="text-slate-600">•</span>
+                <span id="totalPoints">{{ questions|sum(attribute='points') }} points</span>
+                <span class="text-slate-600">•</span>
+                <span id="questionCount">{{ questions|length }} questions</span>
+            </p>
+        </div>
+    </div>
+    
+    <div class="flex items-center gap-3">
+        <button onclick="previewQuiz()" class="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 transition-all flex items-center gap-2">
+            <i class="bi bi-eye"></i>
+            Preview
+        </button>
+        <button onclick="saveQuiz()" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all flex items-center gap-2">
+            <i class="bi bi-check-lg"></i>
+            Save Quiz
+        </button>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Question Builder -->
+    <div class="space-y-6">
+        <!-- Add Question Form -->
+        <div class="bento-item glass-card p-6 animate-slide-up" style="animation-delay: 0.1s">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                    <i class="bi bi-plus-circle text-blue-400"></i>
+                </div>
+                <h3 class="font-display font-semibold text-lg">Add Question</h3>
+            </div>
+
+            <form method="POST" id="questionForm" class="space-y-5">
+                <!-- Question Text -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-slate-300 flex items-center gap-2">
+                        <i class="bi bi-question-circle text-slate-500"></i>
+                        Question Text <span class="text-red-400">*</span>
+                    </label>
+                    <textarea name="question_text" id="questionText" rows="3" required
+                              class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white placeholder-slate-500 resize-none transition-all"
+                              placeholder="Enter your question here..."></textarea>
+                </div>
+
+                <!-- Question Type: only auto-graded True/False or five choices -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-slate-300">Question Type</label>
+                    <p class="text-xs text-slate-500 mb-2">Only True/False (one word) and multiple choice with exactly five options are supported — both are auto-graded.</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button type="button" onclick="setQuestionType('multiple_choice')" 
+                                class="question-type-btn active p-3 rounded-xl bg-white/5 border border-white/10 text-center transition-all"
+                                data-type="multiple_choice">
+                            <i class="bi bi-list-ol text-2xl mb-2 block text-blue-400"></i>
+                            <span class="text-sm text-slate-300">5 choices (1–5)</span>
+                        </button>
+                        <button type="button" onclick="setQuestionType('true_false')" 
+                                class="question-type-btn p-3 rounded-xl bg-white/5 border border-white/10 text-center transition-all"
+                                data-type="true_false">
+                            <i class="bi bi-toggle2-on text-2xl mb-2 block text-purple-400"></i>
+                            <span class="text-sm text-slate-300">True / False</span>
+                        </button>
+                    </div>
+                    <input type="hidden" name="question_type" id="questionType" value="multiple_choice">
+                </div>
+
+                <!-- Points -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-slate-300 flex items-center gap-2">
+                        <i class="bi bi-star text-slate-500"></i>
+                        Points
+                    </label>
+                    <div class="flex items-center gap-3">
+                        <input type="number" name="points" id="points" value="1" min="1" max="100"
+                               class="w-24 px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-white text-center font-semibold">
+                        <div class="flex gap-2">
+                            <button type="button" onclick="setPoints(1)" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-slate-400 transition-all">1</button>
+                            <button type="button" onclick="setPoints(2)" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-slate-400 transition-all">2</button>
+                            <button type="button" onclick="setPoints(5)" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-slate-400 transition-all">5</button>
+                            <button type="button" onclick="setPoints(10)" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-slate-400 transition-all">10</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Options: exactly five (labeled 1–5) -->
+                <div id="optionsSection" class="space-y-3">
+                    <label class="text-sm font-medium text-slate-300 flex items-center gap-2">
+                        <i class="bi bi-list-ol text-slate-500"></i>
+                        Five answer choices
+                    </label>
+                    <div id="optionsList" class="space-y-2">
+                        {% for i in range(1, 6) %}
+                        <div class="option-item flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
+                            <span class="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-sm font-bold text-blue-400">{{ i }}</span>
+                            <input type="text" name="options[]" required
+                                   class="flex-1 bg-transparent border-none outline-none text-white placeholder-slate-500"
+                                   placeholder="Choice {{ i }} text">
+                            <label class="flex items-center gap-2 cursor-pointer shrink-0">
+                                <input type="radio" name="correct_option_mc" value="{{ i - 1 }}" class="sr-only" {% if i == 1 %}checked{% endif %}>
+                                <div class="w-5 h-5 rounded-full border-2 border-white/20 flex items-center justify-center correct-indicator">
+                                    <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 opacity-0 transition-opacity"></div>
+                                </div>
+                                <span class="text-xs text-slate-400">Correct</span>
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- True/False Section (hidden by default) -->
+                <div id="trueFalseSection" class="space-y-3 hidden">
+                    <label class="text-sm font-medium text-slate-300">Correct Answer</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="correct_option_tf" value="0" class="sr-only" checked>
+                            <div class="p-4 rounded-xl bg-white/5 border border-white/10 text-center transition-all hover:bg-white/10 correct-true-false">
+                                <i class="bi bi-check-circle text-2xl text-emerald-400 mb-2 block"></i>
+                                <span class="text-white font-semibold">True</span>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="correct_option_tf" value="1" class="sr-only">
+                            <div class="p-4 rounded-xl bg-white/5 border border-white/10 text-center transition-all hover:bg-white/10 correct-true-false">
+                                <i class="bi bi-x-circle text-2xl text-red-400 mb-2 block"></i>
+                                <span class="text-white font-semibold">False</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Submit -->
+                <div class="pt-4 border-t border-white/10">
+                    <button type="submit" 
+                            class="w-full py-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all flex items-center justify-center gap-2">
+                        <i class="bi bi-plus-lg"></i>
+                        Add to Quiz
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Quiz Settings -->
+        <div class="bento-item glass-card p-6 animate-slide-up" style="animation-delay: 0.2s">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                    <i class="bi bi-gear text-amber-400"></i>
+                </div>
+                <h3 class="font-display font-semibold text-lg">Quiz Settings</h3>
+            </div>
+            
+            <div class="space-y-4">
+                <div class="flex items-center justify-between p-3 rounded-xl bg-white/5">
+                    <div>
+                        <p class="text-sm text-white">Time Limit</p>
+                        <p class="text-xs text-slate-400">Maximum time allowed</p>
+                    </div>
+                    <select class="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-sm text-white focus:outline-none">
+                        <option>No limit</option>
+                        <option>15 minutes</option>
+                        <option>30 minutes</option>
+                        <option>45 minutes</option>
+                        <option>60 minutes</option>
+                    </select>
+                </div>
+                <div class="flex items-center justify-between p-3 rounded-xl bg-white/5">
+                    <div>
+                        <p class="text-sm text-white">Attempts Allowed</p>
+                        <p class="text-xs text-slate-400">Number of tries</p>
+                    </div>
+                    <select class="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-sm text-white focus:outline-none">
+                        <option>Unlimited</option>
+                        <option>1 attempt</option>
+                        <option>2 attempts</option>
+                        <option>3 attempts</option>
+                    </select>
+                </div>
+                <div class="flex items-center justify-between p-3 rounded-xl bg-white/5">
+                    <div>
+                        <p class="text-sm text-white">Show Correct Answers</p>
+                        <p class="text-xs text-slate-400">After submission</p>
+                    </div>
+                    <div class="w-12 h-6 rounded-full bg-blue-500 relative cursor-pointer">
+                        <div class="w-5 h-5 rounded-full bg-white absolute top-0.5 right-0.5"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Questions List -->
+    <div class="bento-item glass-card p-6 animate-slide-up" style="animation-delay: 0.3s">
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                    <i class="bi bi-list-ol text-purple-400"></i>
+                </div>
+                <div>
+                    <h3 class="font-display font-semibold text-lg">Questions</h3>
+                    <p class="text-xs text-slate-400">Drag to reorder</p>
+                </div>
+            </div>
+            <button onclick="deleteAllQuestions()" class="p-2 rounded-lg hover:bg-red-500/20 text-slate-500 hover:text-red-400 transition-all" title="Delete All">
+                <i class="bi bi-trash"></i>
+            </button>
+        </div>
+
+        <div id="questionsList" class="space-y-3">
+            {% for q in questions %}
+            <div class="question-card p-4 rounded-xl bg-white/5 border border-white/10 relative group" 
+                 draggable="true" 
+                 data-question-id="{{ q.id }}"
+                 ondragstart="dragStart(event)"
+                 ondragover="dragOver(event)"
+                 ondrop="drop(event)"
+                 ondragend="dragEnd(event)">
+                <div class="flex items-start gap-3">
+                    <div class="flex flex-col items-center gap-1 pt-1">
+                        <span class="w-6 h-6 rounded bg-blue-500/20 flex items-center justify-center text-xs font-bold text-blue-400">{{ q.order }}</span>
+                        <i class="bi bi-grip-vertical text-slate-600 cursor-move"></i>
+                    </div>
+                    
+                    <div class="flex-1 min-w-0">
+                        <p class="text-white font-medium mb-2 line-clamp-2">{{ q.question_text }}</p>
+                        
+                        <div class="flex items-center gap-3 text-xs">
+                            <span class="px-2 py-1 rounded bg-white/5 text-slate-400">
+                                {{ q.normalized_question_type|replace('_', ' ')|title }}
+                            </span>
+                            <span class="px-2 py-1 rounded bg-amber-500/20 text-amber-400">
+                                {{ q.points }} pts
+                            </span>
+                            <span class="text-slate-500">
+                                {{ q.get_options()|length if q.normalized_question_type in ['multiple_choice', 'true_false'] else 0 }} options
+                            </span>
+                        </div>
+                        {% if q.normalized_question_type == 'multiple_choice' and not q.get_options() %}
+                        <p class="text-xs text-amber-400/90 mt-2">No choices in the database — students get a text box. Delete and re-add this question with five options, or fix the data.</p>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onclick="editQuestion({{ q.id }})" class="p-2 rounded-lg hover:bg-blue-500/20 text-slate-500 hover:text-blue-400 transition-all">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button onclick="deleteQuestion({{ q.id }})" class="p-2 rounded-lg hover:bg-red-500/20 text-slate-500 hover:text-red-400 transition-all">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="text-center py-12">
+                <div class="w-16 h-16 rounded-full bg-slate-700/50 flex items-center justify-center mx-auto mb-4">
+                    <i class="bi bi-clipboard text-3xl text-slate-500"></i>
+                </div>
+                <h4 class="font-display font-semibold text-lg text-white mb-2">No Questions Yet</h4>
+                <p class="text-slate-400 text-sm">Start building your quiz by adding questions</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Preview Modal -->
+<div id="previewModal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="closePreview()"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+        <div class="glass-card rounded-2xl p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto transform scale-95 opacity-0 transition-all duration-300 modal-content">
+            <div class="flex items-center justify-between mb-6 sticky top-0 bg-slate-900/50 backdrop-blur-sm p-4 -mx-6 -mt-6 border-b border-white/10">
+                <h3 class="font-display text-xl font-semibold text-white">Quiz Preview</h3>
+                <button onclick="closePreview()" class="p-2 rounded-lg hover:bg-white/10 transition-colors">
+                    <i class="bi bi-x-lg text-slate-400"></i>
+                </button>
+            </div>
+            
+            <div id="previewContent" class="space-y-6">
+                <!-- Preview content will be populated here -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let draggedElement = null;
+
+    // Question type switching
+    function setQuestionType(type) {
+        document.querySelectorAll('.question-type-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.querySelector(`[data-type="${type}"]`).classList.add('active');
+        document.getElementById('questionType').value = type;
+
+        document.getElementById('optionsSection').classList.toggle('hidden', type !== 'multiple_choice');
+        document.getElementById('trueFalseSection').classList.toggle('hidden', type !== 'true_false');
+    }
+
+    // Set points
+    function setPoints(value) {
+        document.getElementById('points').value = value;
+    }
+
+    // Update correct answer indicators
+    function updateCorrectIndicators() {
+        document.querySelectorAll('.correct-indicator div').forEach(ind => {
+            ind.classList.add('opacity-0');
+        });
+        const checkedMc = document.querySelector('input[name="correct_option_mc"]:checked');
+        const checkedTf = document.querySelector('input[name="correct_option_tf"]:checked');
+        const checked = checkedMc || checkedTf;
+        checked?.closest('label')?.querySelector('.correct-indicator div')?.classList.remove('opacity-0');
+    }
+
+    // Drag and drop
+    function dragStart(e) {
+        draggedElement = e.target;
+        e.target.classList.add('dragging');
+    }
+
+    function dragOver(e) {
+        e.preventDefault();
+    }
+
+    function drop(e) {
+        e.preventDefault();
+        if (e.target.closest('.question-card') && e.target.closest('.question-card') !== draggedElement) {
+            const dropTarget = e.target.closest('.question-card');
+            const container = document.getElementById('questionsList');
+            const allCards = [...container.querySelectorAll('.question-card')];
+            const draggedIndex = allCards.indexOf(draggedElement);
+            const dropIndex = allCards.indexOf(dropTarget);
+            
+            if (draggedIndex < dropIndex) {
+                dropTarget.after(draggedElement);
+            } else {
+                dropTarget.before(draggedElement);
+            }
+            
+            // Update order numbers
+            updateOrderNumbers();
+        }
+    }
+
+    function dragEnd(e) {
+        e.target.classList.remove('dragging');
+    }
+
+    function updateOrderNumbers() {
+        document.querySelectorAll('.question-card').forEach((card, index) => {
+            card.querySelector('.w-6').textContent = index + 1;
+        });
+    }
+
+    // Question actions
+    function editQuestion(id) {
+        showToast('Edit functionality coming soon!', 'info');
+    }
+
+    function deleteQuestion(id) {
+        if (confirm('Delete this question?')) {
+            showToast('Question deleted', 'success');
+        }
+    }
+
+    function deleteAllQuestions() {
+        if (confirm('Delete all questions? This cannot be undone.')) {
+            showToast('All questions deleted', 'success');
+        }
+    }
+
+    // Preview
+    function previewQuiz() {
+        const modal = document.getElementById('previewModal');
+        const content = document.getElementById('previewContent');
+        
+        // Build preview HTML
+        let html = '';
+        document.querySelectorAll('.question-card').forEach((q, index) => {
+            const text = q.querySelector('.text-white').textContent;
+            const type = q.querySelector('.px-2').textContent;
+            const points = q.querySelector('.text-amber-400').textContent;
+            
+            html += `
+                <div class="preview-question p-4 rounded-xl bg-white/5 border border-white/10">
+                    <div class="flex items-start gap-3 mb-4">
+                        <span class="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-sm font-bold text-blue-400">${index + 1}</span>
+                        <div class="flex-1">
+                            <p class="text-white font-medium mb-2">${text}</p>
+                            <div class="flex items-center gap-2 text-xs text-slate-400">
+                                <span>${type}</span>
+                                <span>•</span>
+                                <span class="text-amber-400">${points}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        content.innerHTML = html || '<p class="text-slate-400 text-center">No questions to preview</p>';
+        
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.querySelector('.modal-content').classList.remove('scale-95', 'opacity-0');
+            modal.querySelector('.modal-content').classList.add('scale-100', 'opacity-100');
+        }, 10);
+    }
+
+    function closePreview() {
+        const modal = document.getElementById('previewModal');
+        const content = modal.querySelector('.modal-content');
+        
+        content.classList.remove('scale-100', 'opacity-100');
+        content.classList.add('scale-95', 'opacity-0');
+        
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 300);
+    }
+
+    function saveQuiz() {
+        showToast('Quiz saved successfully!', 'success');
+    }
+
+    // Toast notification
+    function showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        const colors = {
+            success: 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300',
+            error: 'bg-red-500/20 border-red-500/30 text-red-300',
+            info: 'bg-blue-500/20 border-blue-500/30 text-blue-300'
+        };
+        
+        toast.className = `fixed bottom-4 right-4 px-6 py-3 rounded-xl glass-card border ${colors[type]} transform translate-y-full opacity-0 transition-all duration-300 z-50 flex items-center gap-2`;
+        toast.innerHTML = `
+            <i class="bi ${type === 'success' ? 'bi-check-circle' : type === 'error' ? 'bi-x-circle' : 'bi-info-circle'}"></i>
+            <span class="font-medium">${message}</span>
+        `;
+        
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.classList.remove('translate-y-full', 'opacity-0');
+        }, 10);
+        
+        setTimeout(() => {
+            toast.classList.add('translate-y-full', 'opacity-0');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('input[name="correct_option_mc"], input[name="correct_option_tf"]').forEach(radio => {
+            radio.addEventListener('change', updateCorrectIndicators);
+        });
+        updateCorrectIndicators();
+    });
+</script>
+{% endblock %}

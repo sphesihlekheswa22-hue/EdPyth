@@ -1,5 +1,5 @@
-from datetime import datetime
 from app import db
+from app.utils.app_time import app_today
 
 
 class Student(db.Model):
@@ -14,7 +14,9 @@ class Student(db.Model):
     address = db.Column(db.Text, nullable=True)
     program = db.Column(db.String(100), nullable=True)  # e.g., Computer Science
     year_of_study = db.Column(db.Integer, nullable=True)
-    enrollment_date = db.Column(db.Date, default=datetime.utcnow)
+    enrollment_date = db.Column(db.Date, default=app_today)
+    # Relative to Flask static folder, e.g. uploads/profiles/<student_db_id>/photo.jpg
+    profile_image = db.Column(db.String(512), nullable=True)
     
     # Relationships
     enrollments = db.relationship('Enrollment', backref='student', lazy=True, cascade='all, delete-orphan')
@@ -25,6 +27,7 @@ class Student(db.Model):
     chat_sessions = db.relationship('ChatSession', backref='student', lazy=True, cascade='all, delete-orphan')
     cv_reviews = db.relationship('CVReview', backref='student', lazy=True, cascade='all, delete-orphan')
     risk_scores = db.relationship('RiskScore', backref='student', lazy=True, cascade='all, delete-orphan')
+    interventions_received = db.relationship('InterventionMessage', back_populates='student', lazy=True)
     
     def __repr__(self):
         return f'<Student {self.student_id}>'
@@ -50,6 +53,16 @@ class Student(db.Model):
         present = sum(1 for a in self.attendance_records if a.status == 'present')
         return (present / len(self.attendance_records)) * 100
     
+    def profile_image_url(self):
+        """Public URL path for profile photo, or None."""
+        if not self.profile_image:
+            return None
+        from flask import url_for
+        try:
+            return url_for('static', filename=self.profile_image)
+        except RuntimeError:
+            return None
+
     def to_dict(self):
         return {
             'id': self.id,

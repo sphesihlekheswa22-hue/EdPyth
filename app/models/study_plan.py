@@ -1,5 +1,5 @@
-from datetime import datetime
 from app import db
+from app.utils.app_time import app_now
 
 
 class StudyPlan(db.Model):
@@ -15,8 +15,8 @@ class StudyPlan(db.Model):
     start_date = db.Column(db.Date, nullable=True)
     end_date = db.Column(db.Date, nullable=True)
     status = db.Column(db.String(20), default='active')  # active, completed, cancelled
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=app_now)
+    updated_at = db.Column(db.DateTime, default=app_now, onupdate=app_now)
     
     # Relationships
     course = db.relationship('Course', backref='study_plans')
@@ -66,8 +66,8 @@ class StudyPlanItem(db.Model):
     due_date = db.Column(db.Date, nullable=True)
     estimated_time = db.Column(db.Integer, nullable=True)  # in minutes
     completed_at = db.Column(db.DateTime, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=app_now)
+    updated_at = db.Column(db.DateTime, default=app_now, onupdate=app_now)
     
     def __repr__(self):
         return f'<StudyPlanItem {self.title}>'

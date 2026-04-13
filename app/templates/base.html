@@ -1,31 +1,49 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="dark" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="color-scheme" content="dark light">
+    <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+    
     <title>{% block title %}EduMind AI - Learning Reimagined{% endblock %}</title>
+    
+    <!-- Preconnect for Performance -->
+    <link rel="preconnect" href="https://cdn.tailwindcss.com">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
     <!-- Bootstrap Icons -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    
+    <!-- Chart.js (Lazy loaded) -->
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
     <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <script>
+        // Tailwind Configuration
         tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        display: ['Plus Jakarta Sans', 'sans-serif'],
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        display: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
                     },
                     colors: {
+                        slate: {
+                            950: '#020617',
+                            900: '#0f172a',
+                            850: '#131c31', // Custom mid-tone
+                        },
                         primary: {
                             50: '#eff6ff',
                             100: '#dbeafe',
@@ -51,6 +69,7 @@
                         'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                         'slide-up': 'slideUp 0.5s ease-out',
                         'fade-in': 'fadeIn 0.3s ease-out',
+                        'shimmer': 'shimmer 2s infinite',
                     },
                     keyframes: {
                         'gradient-x': {
@@ -68,6 +87,10 @@
                         'fadeIn': {
                             '0%': { opacity: '0' },
                             '100%': { opacity: '1' },
+                        },
+                        'shimmer': {
+                            '0%': { backgroundPosition: '-200% 0' },
+                            '100%': { backgroundPosition: '200% 0' },
                         }
                     }
                 }
@@ -76,91 +99,144 @@
     </script>
     
     <style>
-        /* Glassmorphism Utilities */
+        /* ==================== CSS RESET & BASE ==================== */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        :root {
+            color-scheme: dark;
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+        }
+        
+        html {
+            scroll-behavior: smooth;
+            text-rendering: optimizeLegibility;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            -webkit-text-size-adjust: 100%;
+        }
+        
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+        
+        /* Accessibility: Reduced Motion */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+        
+        /* Focus Visible for Accessibility */
+        :focus-visible {
+            outline: 2px solid rgba(59, 130, 246, 0.75);
+            outline-offset: 2px;
+            border-radius: 8px;
+        }
+        
+        /* ==================== GLASSMORPHISM SYSTEM ==================== */
         .glass {
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--glass-bg);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--glass-border);
         }
         
         .glass-strong {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            background: rgba(30, 41, 59, 0.85);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
             border: 1px solid rgba(255, 255, 255, 0.08);
         }
         
+        /* Premium Glass Card [^45^][^47^] */
         .glass-card {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+            background:
+                radial-gradient(1200px 600px at 0% 0%, rgba(59, 130, 246, 0.08) 0%, transparent 60%),
+                radial-gradient(900px 500px at 100% 0%, rgba(139, 92, 246, 0.06) 0%, transparent 55%),
+                linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow:
+                0 18px 50px -18px rgba(0, 0, 0, 0.4),
+                0 8px 28px 0 rgba(0, 0, 0, 0.25),
+                inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        
-        /* Neumorphism/Soft UI */
-        .soft-ui {
-            background: linear-gradient(145deg, #1e293b, #0f172a);
-            box-shadow: 
-                20px 20px 60px #0b1120,
-                -20px -20px 60px #27354f;
-        }
-        
-        .soft-button {
-            background: linear-gradient(145deg, #1e293b, #0f172a);
-            box-shadow: 
-                5px 5px 10px #0b1120,
-                -5px -5px 10px #27354f;
-            transition: all 0.3s ease;
-        }
-        
-        .soft-button:hover {
-            box-shadow: 
-                8px 8px 16px #0b1120,
-                -8px -8px 16px #27354f;
+
+        .glass-card:hover {
+            border-color: rgba(255, 255, 255, 0.18);
+            box-shadow:
+                0 26px 70px -22px rgba(0, 0, 0, 0.5),
+                0 12px 36px 0 rgba(0, 0, 0, 0.28),
+                inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
             transform: translateY(-2px);
         }
-        
-        .soft-button:active {
-            box-shadow: 
-                inset 5px 5px 10px #0b1120,
-                inset -5px -5px 10px #27354f;
+
+        .glass-card:active {
             transform: translateY(0);
         }
         
-        /* Animated Background */
+        /* Premium Variant */
+        .glass-card-premium {
+            background:
+                radial-gradient(900px 500px at 20% 0%, rgba(236, 72, 153, 0.08) 0%, transparent 55%),
+                radial-gradient(800px 500px at 80% 20%, rgba(6, 182, 212, 0.06) 0%, transparent 55%),
+                linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        /* ==================== DARK MODE OPTIMIZATIONS [^46^][^47^] ==================== */
+        
+        /* Avoid pure black - use deep slate [^47^] */
+        .bg-deep {
+            background-color: #0b1120; /* Softer than pure black */
+        }
+        
+        /* High contrast text */
+        .text-high-contrast {
+            color: #f1f5f9; /* Off-white instead of pure white */
+        }
+        
+        /* ==================== BACKGROUNDS ==================== */
         .gradient-bg {
-            background: linear-gradient(-45deg, #0f172a, #1e1b4b, #312e81, #1e293b);
+            background: linear-gradient(-45deg, #0f172a, #1e1b4b, #1e293b, #0c1322);
             background-size: 400% 400%;
-            animation: gradient-x 15s ease infinite;
+            animation: gradient-x 20s ease infinite;
         }
         
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
+        .gradient-bg::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse at 20% 20%, rgba(59, 130, 246, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(139, 92, 246, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 40% 60%, rgba(236, 72, 153, 0.04) 0%, transparent 40%);
+            pointer-events: none;
         }
         
-        ::-webkit-scrollbar-track {
-            background: #0f172a;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-            background: #3b82f6;
-            border-radius: 4px;
-        }
-        
-        ::-webkit-scrollbar-thumb:hover {
-            background: #60a5fa;
-        }
-        
-        /* Smooth Transitions */
-        * {
-            transition: background-color 0.3s ease, border-color 0.3s ease;
-        }
-        
-        /* Sidebar Hover Effects */
+        /* ==================== NAVIGATION ==================== */
         .nav-item-glow {
             position: relative;
             overflow: hidden;
@@ -173,103 +249,144 @@
             left: -100%;
             width: 100%;
             height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.2), transparent);
-            transition: left 0.5s;
+            background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.15), transparent);
+            transition: left 0.5s ease;
+            pointer-events: none;
         }
         
         .nav-item-glow:hover::before {
             left: 100%;
         }
         
-        /* Bento Grid */
-        .bento-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1.5rem;
-        }
-        
-        .bento-item {
-            border-radius: 24px;
-            overflow: hidden;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        .bento-item:hover {
-            transform: translateY(-8px) scale(1.02);
-        }
-        
-        /* Role Badges */
-        .badge-glow {
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .badge-glow::after {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent);
-            transform: rotate(45deg);
-            transition: all 0.5s;
-            opacity: 0;
-        }
-        
-        .badge-glow:hover::after {
-            opacity: 1;
-            left: 100%;
-        }
-        
-        /* Floating Elements */
-        .float-element {
-            animation: float 6s ease-in-out infinite;
-        }
-        
-        /* Loading Shimmer */
-        .shimmer {
-            background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0) 100%);
-            background-size: 200% 100%;
-            animation: shimmer 2s infinite;
-        }
-        
+        /* ==================== ANIMATIONS ==================== */
         @keyframes shimmer {
             0% { background-position: -200% 0; }
             100% { background-position: 200% 0; }
         }
         
-        /* Focus States */
-        .focus-ring:focus {
+        .shimmer {
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite;
+        }
+        
+        .float-element {
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        /* ==================== SCROLLBAR ==================== */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        /* ==================== UTILITIES ==================== */
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .text-gradient {
+            background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .text-gradient-blue {
+            background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        /* Glow Effects */
+        .glow-blue {
+            box-shadow: 0 0 30px rgba(59, 130, 246, 0.2);
+        }
+        
+        .glow-purple {
+            box-shadow: 0 0 30px rgba(139, 92, 246, 0.2);
+        }
+        
+        /* ==================== FORM ELEMENTS ==================== */
+        input, select, textarea {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: inherit;
+            transition: all 0.2s ease;
+        }
+        
+        input:focus, select:focus, textarea:focus {
             outline: none;
-            ring: 2px;
-            ring-color: #3b82f6;
-            ring-offset: 2px;
-            ring-offset-color: #0f172a;
+            border-color: rgba(59, 130, 246, 0.5);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
         
-        /* Toast Notifications */
-        .toast-enter {
-            transform: translateX(100%);
-            opacity: 0;
+        /* ==================== BUTTONS ==================== */
+        .btn-premium {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         
-        .toast-enter-active {
-            transform: translateX(0);
-            opacity: 1;
-            transition: all 0.3s ease-out;
+        .btn-premium:hover {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.25) 0%, rgba(139, 92, 246, 0.25) 100%);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(59, 130, 246, 0.15);
+        }
+        
+        /* ==================== MOBILE OPTIMIZATIONS ==================== */
+        @media (max-width: 1024px) {
+            .glass-card {
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
+            }
+        }
+        
+        /* Safe area for notched devices */
+        @supports (padding-top: env(safe-area-inset-top)) {
+            .safe-area-top {
+                padding-top: env(safe-area-inset-top);
+            }
         }
     </style>
     
     {% block extra_css %}{% endblock %}
 </head>
-<body class="bg-slate-950 text-slate-100 font-sans antialiased overflow-x-hidden">
-    {% if current_user.is_authenticated %}
-    <div class="min-h-screen gradient-bg">
+<body class="bg-slate-950 text-slate-100 font-sans antialiased overflow-x-hidden" data-back-fallback="{{ url_for('main.dashboard') if current_user.is_authenticated|default(false) else url_for('main.index') }}">
+
+    {# Always define a safe role label for this template. #}
+    {% set user_role = (current_user.role if (current_user is defined and current_user.is_authenticated) else 'guest') %}
+
+    {% if current_user.is_authenticated|default(false) %}
+    <div class="min-h-screen gradient-bg relative">
+        
         <!-- Mobile Header -->
-        <div class="lg:hidden glass-strong fixed top-0 left-0 right-0 z-50 px-4 py-3 flex items-center justify-between">
+        <div class="lg:hidden glass-strong fixed top-0 left-0 right-0 z-50 px-4 py-3 flex items-center justify-between safe-area-top">
             <div class="flex items-center gap-3">
-                <button id="mobile-menu-btn" class="p-2 rounded-lg hover:bg-white/10 transition-colors">
+                <button type="button" onclick="edumindGoBack()" class="p-2 rounded-lg hover:bg-white/10 transition-colors focus:outline-none" aria-label="Go back" title="Back">
+                    <i class="bi bi-arrow-left text-2xl"></i>
+                </button>
+                <button id="mobile-menu-btn" class="p-2 rounded-lg hover:bg-white/10 transition-colors focus:outline-none" aria-label="Toggle menu">
                     <i class="bi bi-list text-2xl"></i>
                 </button>
                 <span class="font-display font-bold text-xl bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
@@ -277,23 +394,108 @@
                 </span>
             </div>
             <div class="flex items-center gap-3">
-                <button class="p-2 rounded-lg hover:bg-white/10 relative">
+                <button class="p-2 rounded-lg hover:bg-white/10 relative" onclick="toggleNotifications()" aria-label="Notifications">
                     <i class="bi bi-bell text-xl"></i>
-                    <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                    <span id="notificationBadgeMobile" class="hidden absolute top-1 right-1 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center text-white font-bold">0</span>
                 </button>
                 <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-sm font-bold">
-                    {{ current_user.first_name[0] }}{{ current_user.last_name[0] }}
+                    {% if current_user.first_name and current_user.last_name %}
+                        {{ current_user.first_name[0] }}{{ current_user.last_name[0] }}
+                    {% else %}
+                        ?
+                    {% endif %}
                 </div>
+            </div>
+        </div>
+
+        <!-- Intervention Modal -->
+        <div id="interventionModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div class="glass-card rounded-2xl w-full max-w-lg transform scale-95 opacity-0 transition-all duration-300" id="interventionModalContent">
+                <div class="p-6 border-b border-white/10">
+                    <h3 class="text-xl font-bold text-white">Reach Out to Student</h3>
+                    <p class="text-sm text-slate-400 mt-1">Send personalized support message</p>
+                </div>
+                
+                <form class="p-6 space-y-4" id="interventionForm">
+                    <input type="hidden" id="interventionStudentId" value="">
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-2">Student</label>
+                        <div class="flex items-center gap-3 p-3 rounded-xl bg-white/5">
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-red-400 to-orange-500 flex items-center justify-center text-white font-bold" id="interventionStudentAvatar">
+                                S
+                            </div>
+                            <div>
+                                <p class="font-medium text-white" id="interventionStudentName">Student Name</p>
+                                <p class="text-xs text-slate-500" id="interventionStudentRisk">At-risk level</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-2">Message Template</label>
+                        <select id="templateSelect" class="w-full px-4 py-2.5 bg-slate-900/50 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-blue-500/50 mb-3">
+                            <option value="custom">Custom Message</option>
+                            <option value="attendance">Attendance Concern</option>
+                            <option value="performance">Low Performance Alert</option>
+                            <option value="encouragement">Encouragement & Support</option>
+                            <option value="office_hours">Office Hours Invitation</option>
+                        </select>
+                        
+                        <textarea id="interventionMessage" rows="4" 
+                            class="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all resize-none" 
+                            placeholder="Write your message here..."></textarea>
+                        
+                        <div class="flex justify-between mt-2">
+                            <span class="text-xs text-slate-500" id="charCount">0/500</span>
+                            <span class="text-xs text-amber-400 hidden" id="aiSuggestion">AI: Consider mentioning specific assignments</span>
+                        </div>
+                    </div>
+                    
+                    <div class="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                        <div class="flex items-start gap-2">
+                            <i class="bi bi-info-circle text-blue-400 mt-0.5"></i>
+                            <p class="text-xs text-blue-300">
+                                Student will receive this as a notification. They can reply directly from their dashboard.
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-3 pt-2">
+                        <button type="button" onclick="closeInterventionModal()" class="flex-1 px-4 py-3 rounded-xl border border-white/10 text-slate-300 hover:text-white hover:border-white/20 transition-all">Cancel</button>
+                        <button type="submit" id="sendInterventionBtn" class="flex-1 px-4 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all flex items-center justify-center gap-2">
+                            <i class="bi bi-send"></i>
+                            <span>Send Message</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Notification Dropdown -->
+        <div id="notificationDropdown" class="hidden absolute right-4 top-14 mt-2 w-80 glass-card rounded-2xl shadow-2xl border border-white/10 overflow-hidden z-50">
+            <div class="p-4 border-b border-white/10 flex justify-between items-center">
+                <h3 class="font-semibold text-white">Notifications</h3>
+                <button onclick="markAllAsRead()" class="text-xs text-blue-400 hover:text-blue-300">Mark all read</button>
+            </div>
+            <div id="notificationList" class="max-h-80 overflow-y-auto">
+                <div class="p-8 text-center text-slate-500">
+                    <i class="bi bi-bell-slash text-3xl mb-2"></i>
+                    <p>No new notifications</p>
+                </div>
+            </div>
+            <div class="p-3 border-t border-white/10 bg-white/5">
+                <a href="/notifications" class="block text-center text-sm text-blue-400 hover:text-blue-300">View all notifications</a>
             </div>
         </div>
 
         <div class="flex pt-16 lg:pt-0">
             <!-- Sidebar -->
             <aside id="sidebar" class="fixed lg:sticky top-0 left-0 z-40 w-72 h-screen glass-strong transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out lg:block border-r border-white/10">
-                <div class="h-full flex flex-col px-4 py-6">
+                <div class="h-full flex flex-col px-4 py-6 overflow-y-auto">
                     <!-- Logo -->
                     <div class="mb-8 px-2 flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-blue-500/30 float-element">
                             <i class="bi bi-mortarboard-fill text-xl text-white"></i>
                         </div>
                         <div>
@@ -303,7 +505,7 @@
                     </div>
 
                     <!-- Navigation -->
-                    <nav class="flex-1 space-y-2 overflow-y-auto">
+                    <nav class="flex-1 space-y-2">
                         <div class="px-2 mb-4">
                             <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Main</p>
                             <a href="{{ url_for('main.dashboard') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group {{ 'bg-blue-500/20 text-blue-400 border border-blue-500/30' if request.endpoint == 'main.dashboard' else 'text-slate-300' }}">
@@ -315,84 +517,115 @@
                             </a>
                         </div>
 
-                        {% if current_user.role == 'student' %}
+                        {% if user_role == 'student' %}
+                        <!-- Student Navigation -->
                         <div class="px-2 mb-4">
                             <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Learning</p>
                             <a href="{{ url_for('courses.index') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300">
                                 <i class="bi bi-book text-lg group-hover:scale-110 transition-transform"></i>
-                                <span class="font-medium">My Courses</span>
-                                <span class="ml-auto text-xs bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full">3</span>
+                                <span class="font-medium">Courses</span>
                             </a>
-                            <a href="{{ url_for('ai.chat') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300 mt-1">
-                                <i class="bi bi-chat-dots text-lg group-hover:scale-110 transition-transform"></i>
-                                <span class="font-medium">AI Tutor</span>
-                                <span class="ml-auto flex h-2 w-2">
-                                    <span class="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-emerald-400 opacity-75"></span>
-                                    <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                                </span>
+                            <a href="{{ url_for('courses.all_modules') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300 mt-1">
+                                <i class="bi bi-puzzle text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="font-medium">Modules</span>
                             </a>
-                            <a href="{{ url_for('analytics.student_analytics') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300 mt-1">
-                                <i class="bi bi-graph-up text-lg group-hover:scale-110 transition-transform"></i>
-                                <span class="font-medium">My Progress</span>
+                            <a href="{{ url_for('materials.index') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300 mt-1">
+                                <i class="bi bi-file-earmark-text text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="font-medium">Materials</span>
+                            </a>
+                            <a href="{{ url_for('assignments.index') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300 mt-1">
+                                <i class="bi bi-journal-text text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="font-medium">Assignments</span>
+                            </a>
+                            <a href="{{ url_for('quizzes.index') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300 mt-1">
+                                <i class="bi bi-question-circle text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="font-medium">Quizzes</span>
+                            </a>
+                        </div>
+
+                        <div class="px-2 mb-4">
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">AI Tutor</p>
+                            <a href="{{ url_for('ai.chat') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300">
+                                <i class="bi bi-robot text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="font-medium">Chat with AI</span>
+                            </a>
+                        </div>
+
+                        <div class="px-2 mb-4">
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Study Plan</p>
+                            <a href="{{ url_for('ai.study_plans_index') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300">
+                                <i class="bi bi-calendar-check text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="font-medium">AI Study Plans</span>
                             </a>
                         </div>
 
                         <div class="px-2 mb-4">
                             <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Career</p>
-                            <a href="{{ url_for('career.dashboard') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300">
-                                <i class="bi bi-briefcase text-lg group-hover:scale-110 transition-transform"></i>
-                                <span class="font-medium">Career Path</span>
+                            <a href="{{ url_for('career.cv_review_page') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300">
+                                <i class="bi bi-file-earmark-person text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="font-medium">CV Review</span>
                             </a>
                         </div>
 
-                        {% elif current_user.role == 'lecturer' %}
+                        {% elif user_role == 'lecturer' %}
+                        <!-- Lecturer Navigation -->
                         <div class="px-2 mb-4">
                             <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Teaching</p>
                             <a href="{{ url_for('courses.index') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300">
                                 <i class="bi bi-book text-lg group-hover:scale-110 transition-transform"></i>
-                                <span class="font-medium">My Courses</span>
-                                <span class="ml-auto text-xs bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full">5</span>
+                                <span class="font-medium">My Modules</span>
                             </a>
-                            <a href="{{ url_for('analytics.lecturer_analytics') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300 mt-1">
-                                <i class="bi bi-graph-up text-lg group-hover:scale-110 transition-transform"></i>
-                                <span class="font-medium">Analytics</span>
+                            <a href="{{ url_for('courses.module_content_management') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300 mt-1">
+                                <i class="bi bi-sliders2-vertical text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="font-medium">Content Management</span>
                             </a>
                         </div>
 
-                        {% elif current_user.role == 'admin' %}
                         <div class="px-2 mb-4">
-                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Administration</p>
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Analytics</p>
+                            <a href="{{ url_for('analytics.lecturer_analytics') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300">
+                                <i class="bi bi-graph-up text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="font-medium">Performance</span>
+                            </a>
+                            <a href="{{ url_for('analytics.lecturer_analytics') }}#at-risk" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300 mt-1">
+                                <i class="bi bi-exclamation-triangle text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="font-medium">At-Risk Students</span>
+                            </a>
+                        </div>
+
+                        {% elif user_role == 'admin' %}
+                        <!-- Admin Navigation -->
+                        <div class="px-2 mb-4">
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Management</p>
                             <a href="{{ url_for('admin.users') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300">
                                 <i class="bi bi-people text-lg group-hover:scale-110 transition-transform"></i>
                                 <span class="font-medium">Users</span>
-                                <span class="ml-auto text-xs bg-pink-500/20 text-pink-300 px-2 py-0.5 rounded-full">1.2k</span>
                             </a>
                             <a href="{{ url_for('admin.courses') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300 mt-1">
-                                <i class="bi bi-book text-lg group-hover:scale-110 transition-transform"></i>
+                                <i class="bi bi-plus-circle text-lg group-hover:scale-110 transition-transform"></i>
                                 <span class="font-medium">Courses</span>
                             </a>
                             <a href="{{ url_for('admin.enrollments') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300 mt-1">
-                                <i class="bi bi-person-check text-lg group-hover:scale-110 transition-transform"></i>
+                                <i class="bi bi-link text-lg group-hover:scale-110 transition-transform"></i>
                                 <span class="font-medium">Enrollments</span>
-                            </a>
-                            <a href="{{ url_for('analytics.admin_analytics') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300 mt-1">
-                                <i class="bi bi-graph-up text-lg group-hover:scale-110 transition-transform"></i>
-                                <span class="font-medium">Analytics</span>
                             </a>
                         </div>
 
-                        {% elif current_user.role == 'career_advisor' %}
                         <div class="px-2 mb-4">
-                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Advisory</p>
-                            <a href="{{ url_for('career.advisor_reviews') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300">
-                                <i class="bi bi-file-earmark-text text-lg group-hover:scale-110 transition-transform"></i>
-                                <span class="font-medium">CV Reviews</span>
-                                <span class="ml-auto text-xs bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full">12</span>
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">System</p>
+                            <a href="{{ url_for('analytics.admin_analytics') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300">
+                                <i class="bi bi-bar-chart text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="font-medium">Analytics</span>
+                            </a>
+                            <a href="{{ url_for('admin.settings') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300 mt-1">
+                                <i class="bi bi-gear text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="font-medium">Settings</span>
                             </a>
                         </div>
                         {% endif %}
 
-                        <div class="px-2 mt-auto">
+                        <!-- Account Section -->
+                        <div class="px-2 mt-auto pt-4 border-t border-white/10">
                             <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Account</p>
                             <a href="{{ url_for('auth.profile') }}" class="nav-item-glow flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all group text-slate-300">
                                 <i class="bi bi-person text-lg group-hover:scale-110 transition-transform"></i>
@@ -409,16 +642,20 @@
                     <div class="mt-4 pt-4 border-t border-white/10">
                         <div class="glass-card rounded-2xl p-4 flex items-center gap-3">
                             <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-lg font-bold shadow-lg">
-                                {{ current_user.first_name[0] }}{{ current_user.last_name[0] }}
+                                {% if current_user.first_name and current_user.last_name %}
+                                    {{ current_user.first_name[0] }}{{ current_user.last_name[0] }}
+                                {% else %}
+                                    ?
+                                {% endif %}
                             </div>
                             <div class="flex-1 min-w-0">
-                                <p class="font-semibold text-sm truncate">{{ current_user.full_name }}</p>
-                                <span class="badge-glow inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
-                                    {% if current_user.role == 'student' %}bg-blue-500/20 text-blue-300 border border-blue-500/30
-                                    {% elif current_user.role == 'lecturer' %}bg-purple-500/20 text-purple-300 border border-purple-500/30
-                                    {% elif current_user.role == 'admin' %}bg-pink-500/20 text-pink-300 border border-pink-500/30
+                                <p class="font-semibold text-sm truncate">{{ current_user.full_name|default('User') }}</p>
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
+                                    {% if user_role == 'student' %}bg-blue-500/20 text-blue-300 border border-blue-500/30
+                                    {% elif user_role == 'lecturer' %}bg-purple-500/20 text-purple-300 border border-purple-500/30
+                                    {% elif user_role == 'admin' %}bg-pink-500/20 text-pink-300 border border-pink-500/30
                                     {% else %}bg-amber-500/20 text-amber-300 border border-amber-500/30{% endif %}">
-                                    {{ current_user.role.replace('_', ' ').title() }}
+                                    {{ user_role.replace('_', ' ').title() }}
                                 </span>
                             </div>
                         </div>
@@ -427,20 +664,25 @@
             </aside>
 
             <!-- Overlay for mobile -->
-            <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 hidden lg:hidden transition-opacity"></div>
+            <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 hidden lg:hidden transition-opacity" onclick="toggleSidebar()"></div>
 
             <!-- Main Content -->
             <main class="flex-1 min-h-screen p-4 lg:p-8 overflow-x-hidden">
                 <!-- Top Bar -->
-                <header class="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-slide-up">
-                    <div>
+                <header class="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div class="flex items-start gap-3 sm:items-center min-w-0">
+                        <button type="button" onclick="edumindGoBack()" class="shrink-0 mt-1 sm:mt-0 p-2.5 rounded-xl glass border border-white/10 hover:bg-white/10 transition-all text-slate-300 hover:text-white" aria-label="Go back" title="Back">
+                            <i class="bi bi-arrow-left text-xl"></i>
+                        </button>
+                        <div class="min-w-0">
                         <h2 class="font-display text-3xl font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
                             {% block page_title %}Dashboard{% endblock %}
                         </h2>
                         <p class="text-slate-400 mt-1 flex items-center gap-2">
                             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                            Welcome back, {{ current_user.first_name }}! Ready to learn?
+                            Welcome back{% if current_user.first_name %}, {{ current_user.first_name }}{% endif %}! Ready to learn?
                         </p>
+                        </div>
                     </div>
                     
                     <div class="flex items-center gap-3">
@@ -452,14 +694,15 @@
                         </div>
 
                         <!-- Notifications -->
-                        <button class="relative p-2.5 rounded-xl glass hover:bg-white/10 transition-all group">
+                        <button class="relative p-2.5 rounded-xl glass hover:bg-white/10 transition-all group" onclick="toggleNotifications()" aria-label="Notifications">
                             <i class="bi bi-bell text-xl text-slate-300 group-hover:text-white transition-colors"></i>
-                            <span class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
-                            <span class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
+                            <span id="notificationDotPing" class="hidden absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
+                            <span id="notificationDot" class="hidden absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
+                            <span id="notificationBadgeDesktop" class="hidden absolute -top-1 -right-1 min-w-5 h-5 px-1 bg-red-500 rounded-full text-[11px] leading-5 text-center text-white font-bold">0</span>
                         </button>
 
                         <!-- Theme Toggle -->
-                        <button onclick="toggleTheme()" class="p-2.5 rounded-xl glass hover:bg-white/10 transition-all">
+                        <button onclick="toggleTheme()" class="p-2.5 rounded-xl glass hover:bg-white/10 transition-all" aria-label="Toggle theme">
                             <i class="bi bi-moon-stars text-xl text-slate-300"></i>
                         </button>
                     </div>
@@ -470,17 +713,17 @@
                     {% if messages %}
                         <div class="space-y-3 mb-6">
                             {% for category, message in messages %}
-                            <div class="glass-card rounded-xl p-4 flex items-center gap-3 animate-slide-up border-l-4 
-                                {% if category == 'success' %}border-emerald-500 bg-emerald-500/10
-                                {% elif category == 'error' %}border-red-500 bg-red-500/10
-                                {% elif category == 'warning' %}border-amber-500 bg-amber-500/10
-                                {% else %}border-blue-500 bg-blue-500/10{% endif %}">
+                            <div class="glass-card rounded-xl p-4 flex items-center gap-3 border-l-4 
+                                {% if category == 'success' %}border-emerald-500 bg-emerald-500/5
+                                {% elif category == 'error' %}border-red-500 bg-red-500/5
+                                {% elif category == 'warning' %}border-amber-500 bg-amber-500/5
+                                {% else %}border-blue-500 bg-blue-500/5{% endif %}">
                                 <i class="bi {% if category == 'success' %}bi-check-circle-fill text-emerald-400
                                     {% elif category == 'error' %}bi-x-circle-fill text-red-400
                                     {% elif category == 'warning' %}bi-exclamation-triangle-fill text-amber-400
                                     {% else %}bi-info-circle-fill text-blue-400{% endif %} text-xl"></i>
-                                <p class="text-sm font-medium">{{ message }}</p>
-                                <button onclick="this.parentElement.remove()" class="ml-auto hover:bg-white/10 rounded-lg p-1 transition-colors">
+                                <p class="text-sm font-medium text-slate-200">{{ message }}</p>
+                                <button onclick="this.parentElement.remove()" class="ml-auto hover:bg-white/10 rounded-lg p-1 transition-colors" aria-label="Dismiss">
                                     <i class="bi bi-x text-lg"></i>
                                 </button>
                             </div>
@@ -497,7 +740,7 @@
                 <!-- Footer -->
                 <footer class="mt-12 pt-8 border-t border-white/10 text-center">
                     <p class="text-slate-500 text-sm">
-                        &copy; 2024 EduMind AI. All rights reserved. 
+                        &copy; 2025 EduMind AI. All rights reserved. 
                         <span class="mx-2">•</span>
                         <a href="#" class="hover:text-blue-400 transition-colors">Privacy</a>
                         <span class="mx-2">•</span>
@@ -509,13 +752,13 @@
     </div>
 
     {% else %}
-    <!-- Not Authenticated - Landing Page -->
-    <div class="min-h-screen gradient-bg flex items-center justify-center p-4">
+    <!-- Not authenticated: full-width scroll (centering breaks long landing pages like index) -->
+    <div class="min-h-screen w-full gradient-bg relative">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 <div class="fixed top-4 right-4 z-50 space-y-2 max-w-sm">
                     {% for category, message in messages %}
-                    <div class="glass-card rounded-xl p-4 flex items-center gap-3 animate-slide-up border-l-4 
+                    <div class="glass-card rounded-xl p-4 flex items-center gap-3 border-l-4 
                         {% if category == 'success' %}border-emerald-500
                         {% elif category == 'error' %}border-red-500
                         {% elif category == 'warning' %}border-amber-500
@@ -526,55 +769,106 @@
                 </div>
             {% endif %}
         {% endwith %}
+
+        {% if request.endpoint and request.endpoint != 'main.index' %}
+        <div class="sticky top-0 z-40 safe-area-top px-4 py-3 flex items-center glass-strong border-b border-white/10">
+            <button type="button" onclick="edumindGoBack()" class="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-slate-200 hover:bg-white/10 transition-colors border border-white/10" aria-label="Go back">
+                <i class="bi bi-arrow-left text-lg"></i>
+                Back
+            </button>
+        </div>
+        {% endif %}
         
         {% block auth_content %}{% endblock %}
     </div>
     {% endif %}
 
+    <!-- JavaScript -->
     <script>
+        function edumindGoBack() {
+            var fb = document.body.getAttribute('data-back-fallback') || '/';
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.location.assign(fb);
+            }
+        }
+
         // Mobile Menu Toggle
         const mobileMenuBtn = document.getElementById('mobile-menu-btn');
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('sidebar-overlay');
         
         function toggleSidebar() {
-            const isOpen = !sidebar.classList.contains('-translate-x-full');
-            if (isOpen) {
-                sidebar.classList.add('-translate-x-full');
-                overlay.classList.add('hidden');
-            } else {
+            const isClosed = sidebar.classList.contains('-translate-x-full');
+            if (isClosed) {
                 sidebar.classList.remove('-translate-x-full');
                 overlay.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
+                document.body.style.overflow = '';
             }
         }
         
         mobileMenuBtn?.addEventListener('click', toggleSidebar);
-        overlay?.addEventListener('click', toggleSidebar);
 
-        // Theme Toggle
+        // Theme Toggle with localStorage
         function toggleTheme() {
             const html = document.documentElement;
-            if (html.classList.contains('dark')) {
+            const isDark = html.classList.contains('dark');
+            
+            if (isDark) {
                 html.classList.remove('dark');
                 html.setAttribute('data-theme', 'light');
+                localStorage.setItem('theme', 'light');
             } else {
                 html.classList.add('dark');
                 html.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
             }
         }
+        
+        // Check for saved theme preference
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'light') {
+            document.documentElement.classList.remove('dark');
+            document.documentElement.setAttribute('data-theme', 'light');
+        }
 
-        // Add smooth scroll behavior
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            });
+        // Notifications Toggle
+        function toggleNotifications() {
+            const dropdown = document.getElementById('notificationDropdown');
+            dropdown.classList.toggle('hidden');
+        }
+        
+        function markAllAsRead() {
+            // Implementation for marking all notifications as read
+            console.log('Marking all as read');
+        }
+        
+        function closeInterventionModal() {
+            const modal = document.getElementById('interventionModal');
+            const content = document.getElementById('interventionModalContent');
+            content.classList.remove('scale-100', 'opacity-100');
+            content.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(e) {
+            const dropdown = document.getElementById('notificationDropdown');
+            const bell = e.target.closest('[onclick="toggleNotifications()"]');
+            
+            if (!bell && !dropdown.contains(e.target)) {
+                dropdown.classList.add('hidden');
+            }
         });
 
-        // Intersection Observer for animations
+        // Intersection Observer for scroll animations
         const observerOptions = {
             threshold: 0.1,
             rootMargin: '0px 0px -50px 0px'
@@ -589,13 +883,14 @@
             });
         }, observerOptions);
 
-        // Observe all cards and sections
-        document.querySelectorAll('.bento-item, .glass-card').forEach(el => {
+        // Observe elements
+        document.querySelectorAll('.glass-card, .bento-item').forEach(el => {
             el.classList.add('opacity-0');
             observer.observe(el);
         });
     </script>
     
     {% block extra_js %}{% endblock %}
+    <script src="{{ url_for('static', filename='js/notifications.js') }}" defer></script>
 </body>
 </html>
